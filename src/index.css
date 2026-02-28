@@ -1,0 +1,44 @@
+/* ===== RESET ===== */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ===== ROOT ===== */
+html,
+body,
+#root {
+  height: 100%;
+  width: 100%;
+}
+
+/* ===== BODY ===== */
+body {
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  background-color: #f5f7fa; /* nền nhẹ nếu cần */
+  color: #333;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ===== LINKS ===== */
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+/* ===== BUTTON RESET ===== */
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* ===== TABLE RESET ===== */
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
