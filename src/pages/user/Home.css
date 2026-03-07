@@ -133,3 +133,52 @@ td button:last-child {
 td button:last-child:hover {
   background: #e04545;
 }
+
+/* ===== TABLET ===== */
+
+@media (max-width: 1024px) {
+  .card {
+    padding: 30px;
+  }
+
+  .form {
+    flex-direction: column;
+  }
+
+  .form input {
+    width: 100%;
+  }
+
+  .form button {
+    width: 100%;
+  }
+}
+/* ===== MOBILE ===== */
+
+@media (max-width: 600px) {
+  .page {
+    padding: 20px;
+  }
+
+  .card {
+    padding: 20px;
+  }
+
+  h1 {
+    font-size: 22px;
+  }
+
+  table {
+    font-size: 13px;
+  }
+
+  th,
+  td {
+    padding: 10px;
+  }
+
+  td button {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+}
