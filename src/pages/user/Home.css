@@ -99,3 +99,37 @@ tbody tr:hover {
   background: #f9fbff;
   transition: 0.2s;
 }
+
+/* ===== ACTION BUTTONS ===== */
+
+td button {
+  padding: 8px 14px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  margin-right: 6px;
+  transition: 0.2s ease;
+}
+
+/* EDIT BUTTON */
+
+td button:first-child {
+  background: #4facfe;
+  color: white;
+}
+
+td button:first-child:hover {
+  background: #2e8de6;
+}
+
+/* DELETE BUTTON */
+
+td button:last-child {
+  background: #ff5b5b;
+  color: white;
+}
+
+td button:last-child:hover {
+  background: #e04545;
+}

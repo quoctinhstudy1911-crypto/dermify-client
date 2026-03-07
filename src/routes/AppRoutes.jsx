@@ -1,13 +1,13 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Home from "../pages/user/Home";
-import AdminDashboard from "../pages/admin/AdminDashboard";
+import { BrowserRouter, Routes } from "react-router-dom";
+import UserRoutes from "./UserRoutes";
+import AdminRoutes from "./AdminRoutes";
 
 export default function AppRoutes() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/admin" element={<AdminDashboard />} />
+        {UserRoutes()}
+        {AdminRoutes()}
       </Routes>
     </BrowserRouter>
   );
