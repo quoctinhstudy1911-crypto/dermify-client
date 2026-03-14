@@ -157,7 +157,6 @@ export default function Home() {
   const resetForm = () => {
 
     setForm({
-      _id : "",
       name: "",
       email: "",
       phone: "",
