@@ -3,7 +3,7 @@ import { Outlet } from "react-router-dom";
 export default function UserLayout() {
   return (
     <div>
-      <header>User Header</header>
+      <header> Header </header>
 
       <main>
         <Outlet />
