@@ -157,6 +157,7 @@ export default function Home() {
   const resetForm = () => {
 
     setForm({
+      _id : "",
       name: "",
       email: "",
       phone: "",
@@ -217,6 +218,7 @@ export default function Home() {
 
           <thead>
             <tr>
+              <th>id</th>
               <th>Name</th>
               <th>Email</th>
               <th>Phone</th>
@@ -229,6 +231,7 @@ export default function Home() {
             {users.map((user) => (
               <tr key={user._id}>
 
+                <td>{user._id}</td>
                 <td>{user.name}</td>
                 <td>{user.email}</td>
                 <td>{user.phone}</td>
