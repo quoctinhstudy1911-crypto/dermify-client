@@ -1,0 +1,42 @@
+/* Màu vàng Gold đặc trưng */
+.custom-navbar.navbar {
+    background-color: rgb(251, 202, 211) !important;
+    border-bottom: 1px solid #810951 !important;
+}
+
+.custom-navbar .brand-gold {
+    color: #f30202 !important;
+    text-transform: uppercase;
+}
+
+.custom-navbar .nav-link-custom, 
+.custom-navbar .nav-link-custom .nav-link {
+    color: #555 !important;
+    font-weight: 500 !important;
+}
+
+.custom-navbar .nav-link-custom:hover {
+    color: rgb(255,105,180) !important;
+}
+
+.custom-navbar .icon-gold {
+    color: #f30202 !important;
+    margin-right: 5px;
+}
+
+.custom-navbar .btn-gold {
+    border: 1px solid #f30202 !important;
+    color: #f30202 !important;
+    border-radius: 20px !important;
+    background: transparent;
+}
+
+.custom-navbar .btn-gold:hover {
+    background-color: #f30202 !important;
+    color: #810951 !important;
+}
+
+.custom-navbar .search-input-gold {
+    border-radius: 20px !important;
+    border: 1px solid #f30202 !important;
+}

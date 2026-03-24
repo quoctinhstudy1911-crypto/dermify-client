@@ -1,15 +1,14 @@
 import { Outlet } from "react-router-dom";
+import MyNavbar from "../pages/user/Navbar";
 
 export default function UserLayout() {
   return (
-    <div>
-      <header> Header </header>
-
+<div className="user-layout min-vh-100 d-flex flex-column">      
+   <MyNavbar />
       <main>
         <Outlet />
       </main>
 
-      <footer>Footer</footer>
     </div>
   );
 }

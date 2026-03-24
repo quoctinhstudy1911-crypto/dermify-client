@@ -1,21 +1,22 @@
 import axiosClient from "./axiosClient";
 
-export const getUsers = () => {
-  return axiosClient.get("/users");
-};
+const userAPI = {
+  login: (data) => axiosClient.post("/auth/login", data),
+  register: (data) => axiosClient.post("/auth/register", data),
 
-export const getUserById = (id) => {
-  return axiosClient.get(`/users/${id}`);
-};
+  getProfile: () => axiosClient.get("/customer/profile"),
+  updateProfile: (data) => axiosClient.put("/customer/profile", data),
 
-export const createUser = (data) => {
-  return axiosClient.post("/users", data);
-};
+  getAddresses: () => axiosClient.get("/customer/address"),
+  addAddress: (data) => axiosClient.post("/customer/address", data),
+  updateAddress: (id, data) => axiosClient.put(`/customer/address/${id}`, data),
+  deleteAddress: (id) => axiosClient.delete(`/customer/address/${id}`),
+  setDefaultAddress: (id) => axiosClient.put(`/customer/address/${id}/default`),
 
-export const updateUser = (id, data) => {
-  return axiosClient.put(`/users/${id}`, data);
+  uploadAvatar: (formData) => {
+    return axiosClient.post("/customer/upload-avatar", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  },
 };
-
-export const deleteUser = (id) => {
-  return axiosClient.delete(`/users/${id}`);
-};
+export default userAPI;
