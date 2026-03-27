@@ -1,21 +1,48 @@
 import axiosClient from "./axiosClient";
 
-export const getUsers = () => {
-  return axiosClient.get("/users");
-};
+const userApi = {
+  // Lấy thông tin hồ sơ người dùng
+  getProfile: async () => {
+    const res = await axiosClient.get("/customer/profile");
+    return res.data;
+  },
+  // Cập nhật thông tin hồ sơ người dùng
+  updateProfile: async (data) => {
+    const res = await axiosClient.put("/customer/profile", data);
+    return res.data;
+  },
+  // Lấy danh sách địa chỉ của người dùng
+  getAddresses: async () => {
+    const res = await axiosClient.get("/customer/addresses");
+    return res.data;
+  },
+  // Thêm địa chỉ mới cho người dùng
+  addAddress: async (data) => {
+    const res = await axiosClient.post("/customer/address", data);
+    return res.data;
+  },
+  // Cập nhật địa chỉ của người dùng theo ID
+  updateAddress: async (id, data) => {
+    const res = await axiosClient.put(`/customer/address/${id}`, data);
+    return res.data;
+  },
+  // Xóa địa chỉ của người dùng theo ID
+  deleteAddress: async (id) => {
+    const res = await axiosClient.delete(`/customer/address/${id}`);
+    return res.data;
+  },
+  // Đặt địa chỉ mặc định cho người dùng theo ID
+  setDefaultAddress: async (id) => {
+    const res = await axiosClient.put(`/customer/address/${id}/default`);
+    return res.data;
+  },
+  // Tải lên ảnh đại diện cho người dùng
+  uploadAvatar: async (file) => {
+    const formData = new FormData();
+    formData.append("avatar", file);
 
-export const getUserById = (id) => {
-  return axiosClient.get(`/users/${id}`);
+    const res = await axiosClient.post("/customer/upload-avatar", formData);
+    return res.data;
+  },
 };
-
-export const createUser = (data) => {
-  return axiosClient.post("/users", data);
-};
-
-export const updateUser = (id, data) => {
-  return axiosClient.put(`/users/${id}`, data);
-};
-
-export const deleteUser = (id) => {
-  return axiosClient.delete(`/users/${id}`);
-};
+export default userApi;
