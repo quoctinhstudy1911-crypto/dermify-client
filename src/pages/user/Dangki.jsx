@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button, Form, Container, Row, Col, Card } from "react-bootstrap";
-import userAPI from "../../api/userApi";
+import { authApi } from "@/api";
 import { useNavigate } from "react-router-dom";
 
 function Dangki() {
@@ -51,24 +51,21 @@ function Dangki() {
     try {
       setLoading(true);
 
-      await userAPI.register(finalData);
+      await authApi.register(finalData);
 
-      alert("Đăng ký thành công ");
-      navigate("/Dangnhap")
-
-      setFormData({
-        email: "",
-        password: "",
-        confirmPassword: "",
-        name: "",
-        phone: "",
+      const loginData = await authApi.login({
+        email: finalData.email,
+        password: finalData.password,
       });
 
-      setValidated(false);
+      localStorage.setItem("token", loginData.token);
+      localStorage.setItem("role", loginData.role);
+
+      alert("Đăng ký thành công!");
+      navigate("/");
+
     } catch (err) {
-      setServerError(
-        err.response?.data?.message || "Đăng ký thất bại, vui lòng thử lại."
-      );
+      setServerError(err?.message || "Đăng ký thất bại");
     } finally {
       setLoading(false);
     }

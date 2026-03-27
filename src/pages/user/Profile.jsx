@@ -3,7 +3,7 @@ import {
   Container, Card, Form, Button, Row, Col, Image, Spinner, ListGroup, Alert, Modal,
 } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
-import userAPI from "../../api/userApi";
+import { userApi} from "@/api";
 
 function Profile() {
   const [user, setUser] = useState(null);
@@ -12,6 +12,12 @@ function Profile() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [preview, setPreview] = useState(null);
+  useEffect(() => {
+  return () => {
+    if (preview) URL.revokeObjectURL(preview);
+  };
+  }, [preview]);
 
   const [profileForm, setProfileForm] = useState({
     name: "", phone: "", gender: "", dateOfBirth: "",
@@ -28,39 +34,39 @@ function Profile() {
   const navigate = useNavigate();
 
   // 1. Lấy dữ liệu khi vào trang
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      // Lấy Profile
-      try {
-        const resProfile = await userAPI.getProfile();
-        const userData = resProfile.data?.data || resProfile.data;
-        if (userData) {
-          setUser(userData);
-          setProfileForm({
-            name: userData.name || "",
-            phone: userData.phone || "",
-            gender: userData.gender || "",
-            dateOfBirth: userData.dateOfBirth ? userData.dateOfBirth.split("T")[0] : "",
-          });
-        }
-      } catch (pErr) { console.error("Lỗi Profile:", pErr); }
+const fetchData = async () => {
+  setLoading(true);
+  setError("");
 
-      // Lấy Danh sách địa chỉ
-      try {
-        const resAddress = await userAPI.getAddresses();
-        const addrList = resAddress.data?.data || resAddress.data || [];
-        setAddresses(Array.isArray(addrList) ? addrList : []);
-      } catch (aErr) { 
-        console.error("Lỗi Address (Có thể do 404):", aErr);
-        setAddresses([]); 
-      }
-    } catch (err) {
-      setError("Có lỗi hệ thống khi tải dữ liệu!");
-    } finally {
-      setLoading(false);
-    }
-  };
+  try {
+    // chạy song song (nhanh hơn)
+    const [user, addresses] = await Promise.all([
+      userApi.getProfile(),
+      userApi.getAddresses()
+    ]);
+
+    // set user
+    setUser(user);
+
+    setProfileForm({
+      name: user.name || "",
+      phone: user.phone || "",
+      gender: user.gender || "",
+      dateOfBirth: user.dateOfBirth
+        ? user.dateOfBirth.split("T")[0]
+        : "",
+    });
+
+    // set address
+    setAddresses(Array.isArray(addresses) ? addresses : []);
+
+  } catch (err) {
+    console.error(err);
+    setError("Có lỗi khi tải dữ liệu!");
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -79,15 +85,29 @@ function Profile() {
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
     setSaving(true);
-    setError(""); setSuccess("");
+    setError("");
+    setSuccess("");
+
     try {
-      await userAPI.updateProfile(profileForm);
+      // Tạo payload từ form, loại bỏ trường gender nếu người dùng không chọn gì (để backend giữ nguyên giá trị cũ)
+      const payload = { ...profileForm };
+
+      // Nếu gender là chuỗi rỗng, xóa trường này khỏi payload để backend không cập nhật
+      if (!payload.gender) {
+        delete payload.gender;
+      }
+      await userApi.updateProfile(payload);
+
       setSuccess("Cập nhật thông tin thành công!");
-      const res = await userAPI.getProfile();
-      setUser(res.data?.data || res.data);
+
+      const user = await userApi.getProfile();
+      setUser(user);
+
     } catch (err) {
-      setError(err.response?.data?.message || "Cập nhật thất bại!");
-    } finally { setSaving(false); }
+      setError(err.message || "Cập nhật thất bại!");
+    } finally {
+      setSaving(false);
+    }
   };
 
   // 3. Xử lý Modal Địa chỉ
@@ -133,18 +153,17 @@ function Profile() {
     try {
       const addrId = currentAddress?._id || currentAddress?.id;
       if (isEditing && addrId) {
-        await userAPI.updateAddress(addrId, addressForm);
+        await userApi.updateAddress(addrId, addressForm);
         setSuccess("Cập nhật địa chỉ thành công!");
       } else {
-        await userAPI.addAddress(addressForm);
+        await userApi.addAddress(addressForm);
         setSuccess("Thêm địa chỉ mới thành công!");
       }
       setShowAddressModal(false);
-      const res = await userAPI.getAddresses();
-      const newList = res.data?.data || res.data || [];
-      setAddresses(Array.isArray(newList) ? newList : []);
+        const newList = await userApi.getAddresses();
+        setAddresses(Array.isArray(newList) ? newList : []);
     } catch (err) {
-      setError(err.response?.data?.message || "Lưu địa chỉ thất bại!");
+      setError(err.message || "Lưu địa chỉ thất bại!");
     } finally { setSaving(false); }
   };
 
@@ -153,11 +172,11 @@ function Profile() {
     if (window.confirm("Bạn có chắc chắn muốn xóa địa chỉ này không?")) {
       setSaving(true);
       try {
-        await userAPI.deleteAddress(id);
+        await userApi.deleteAddress(id);
         setSuccess("Đã xóa địa chỉ!");
         setAddresses(prev => prev.filter(item => (item._id !== id && item.id !== id)));
       } catch (err) {
-        setError("Không thể xóa địa chỉ này!");
+        setError(err.message || "Không thể xóa địa chỉ này!");
       } finally {
         setSaving(false);
       }
@@ -181,11 +200,48 @@ function Profile() {
               <Form onSubmit={handleUpdateProfile}>
                 <div className="text-center mb-4">
                   <Image
-                    src={user?.avatar || `https://ui-avatars.com/api/?name=${user?.name || 'User'}&background=random`}
+                  src={
+                        preview ||
+                        user?.avatar ||
+                        `https://ui-avatars.com/api/?name=${user?.name || 'User'}&background=random`
+                      }
                     roundedCircle width={120} height={120} className="border border-3 shadow-sm"
                   />
                   <div className="mt-3 mx-auto" style={{ maxWidth: "250px" }}>
-                    <Form.Control type="file" size="sm" accept="image/*" />
+                    <Form.Control
+                      type="file"
+                      size="sm"
+                      accept="image/*"
+                  onChange={async (e) => {
+                        const file = e.target.files[0];
+                        if (!file) return;
+
+                        if (!file.type.startsWith("image/")) {
+                          setError("Chỉ được upload ảnh!");
+                          return;
+                        }
+
+                        if (file.size > 2 * 1024 * 1024) {
+                          setError("Ảnh tối đa 2MB!");
+                          return;
+                        }
+
+                        const previewUrl = URL.createObjectURL(file);
+                        setPreview(previewUrl);
+
+                        try {
+                          await userApi.uploadAvatar(file);
+
+                          const newUser = await userApi.getProfile();
+                          setUser(newUser);
+
+                          setPreview(null);
+                          setSuccess("Upload avatar thành công!");
+                        } catch (err) {
+                          setError("Upload thất bại!");
+                        }
+                      }}
+                    />
                   </div>
                 </div>
 
@@ -199,7 +255,7 @@ function Profile() {
                     <Form.Group className="mb-3">
                       <Form.Label className="fw-bold">Giới tính</Form.Label>
                       <Form.Select name="gender" value={profileForm.gender} onChange={handleProfileChange}>
-                        <option value="">Chọn</option>
+                        <option value="">Chọn giới tính</option>
                         <option value="male">Nam</option>
                         <option value="female">Nữ</option>
                         <option value="other">Khác</option>

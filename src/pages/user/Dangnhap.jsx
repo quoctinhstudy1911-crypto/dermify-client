@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import {
   Button,
@@ -8,8 +9,9 @@ import {
   Spinner,
 } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
-import userAPI from "../../api/userApi";
+import { authApi } from "@/api";
 
+// Trang đăng nhập người dùng
 function Dangnhap() {
   const [formData, setFormData] = useState({
     email: "",
@@ -42,17 +44,17 @@ function Dangnhap() {
     try {
       setLoading(true);
 
-      const res = await userAPI.login(formData);
-      
-      // 👉 ĐIỂM CẦN SỬA: Lấy token an toàn hơn
-      // Tùy Backend trả về res.data.token hay res.data.data.token
-      const token = res.data?.token || res.data?.accessToken || res.data?.data?.token;
+      const res = await authApi.login(formData);
+
+      const token = res.token;
+      const role = res.role;
 
       if (token) {
         // Lưu vào localStorage với key "token" (khớp với axiosClient)
         localStorage.setItem("token", token);
-        
-        // Mẹo: Đợi 1 chút để đảm bảo localStorage đã nhận rồi mới chuyển trang
+        // Lưu role vào localStorage để sử dụng sau này
+         localStorage.setItem("role", role);
+        // Hiển thị thông báo thành công và chuyển hướng về trang chủ
         alert("Đăng nhập thành công!");
         navigate("/"); 
       } else {
@@ -60,9 +62,9 @@ function Dangnhap() {
       }
 
     } catch (err) {
-      console.error("Lỗi đăng nhập:", err.response?.data);
+      console.error("Lỗi đăng nhập:", err);
       setError(
-        err.response?.data?.message || "Sai email hoặc mật khẩu"
+        err?.message || "Sai email hoặc mật khẩu"
       );
     } finally {
       setLoading(false);

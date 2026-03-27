@@ -1,11 +1,8 @@
 
-import MyNavbar from "./Navbar";
-
 function Trangchu() {
-  return (
-    <>
-    </>
-  );
+
+  return <h1>Trang chủ</h1>;
+
 }
 
 export default Trangchu;
