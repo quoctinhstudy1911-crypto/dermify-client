@@ -1,5 +1,5 @@
 import { Outlet } from "react-router-dom";
-import MyNavbar from "@/Components/user/Navbar";
+import MyNavbar from "@/components/user/Navbar";
 
 export default function UserLayout() {
   
