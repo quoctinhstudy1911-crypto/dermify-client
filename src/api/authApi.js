@@ -2,16 +2,10 @@ import axiosClient from "./axiosClient";
 
 const authApi = {
   // Đăng nhập
-  login: async (data) => {
-    const res = await axiosClient.post("/auth/login", data);
-    return res.data;
-  },
+  login: (data) => axiosClient.post("/auth/login", data),
 
   // Đăng ký
-  register: async (data) => {
-    const res = await axiosClient.post("/auth/register", data);
-    return res.data;
-  },
+  register: (data) => axiosClient.post("/auth/register", data),
 };
 
 export default authApi;

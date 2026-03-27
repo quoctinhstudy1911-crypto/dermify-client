@@ -1,31 +1,25 @@
 import axiosClient from "./axiosClient";
 
 const productApi = {
-  // Nhận tất cả sản phẩm với các tham số tùy chọn (ví dụ: phân trang, lọc, sắp xếp)
-  getProducts: async (params) => {
-    const res = await axiosClient.get("/products", { params });
-    return res.data;
-  },
-  // Nhận chi tiết sản phẩm theo slug
-  getProductDetail: async (slug) => {
-    const res = await axiosClient.get(`/products/${slug}`);
-    return res.data;
-  },
+  // Lấy danh sách sản phẩm (có thể truyền params)
+  getProducts: (params) =>
+    axiosClient.get("/products", { params }),
+
+  // Lấy chi tiết sản phẩm theo slug
+  getProductDetail: (slug) =>
+    axiosClient.get(`/products/${slug}`),
+
   // Tạo sản phẩm mới
-  createProduct: async (data) => {
-    const res = await axiosClient.post("/products", data);
-    return res.data;
-  },
+  createProduct: (data) =>
+    axiosClient.post("/products", data),
+
   // Cập nhật sản phẩm theo ID
-  updateProduct: async (id, data) => {
-    const res = await axiosClient.put(`/products/${id}`, data);
-    return res.data;
-  },
+  updateProduct: (id, data) =>
+    axiosClient.put(`/products/${id}`, data),
+
   // Xóa sản phẩm theo ID
-  deleteProduct: async (id) => {
-    const res = await axiosClient.delete(`/products/${id}`);
-    return res.data;
-  },
+  deleteProduct: (id) =>
+    axiosClient.delete(`/products/${id}`),
 };
 
 export default productApi;

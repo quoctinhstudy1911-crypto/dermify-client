@@ -1,56 +1,52 @@
 import axios from "axios";
 
 /**
- * Tạo instance axios dùng chung cho toàn project
- * - baseURL lấy từ file .env
- * - giúp không phải viết lại URL nhiều lần
+ * Axios Client dùng chung cho toàn project
  */
 const axiosClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
+  timeout: 10000, // tránh treo request
+  headers: {
+    "Content-Type": "application/json",
+  },
 });
 
 /**
  * REQUEST INTERCEPTOR
- * Chạy TRƯỚC khi gửi request lên server
- * Dùng để:
- *    - Gắn token vào header
+ * - Gắn token vào header
  */
 axiosClient.interceptors.request.use(
   (config) => {
-    // Lấy token từ localStorage
     const token = localStorage.getItem("token");
 
-    // Nếu có token → gắn vào header Authorization
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
 
     return config;
   },
-  (error) => {
-    // Nếu có lỗi khi tạo request → trả về lỗi
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
 /**
  * RESPONSE INTERCEPTOR
- * Chạy SAU khi nhận response từ server
- * Dùng để:
- *    - Xử lý lỗi chung (401, 403,...)
- *    - Trả về data gọn hơn
+ * - Trả về data gọn
+ * - Xử lý lỗi chung
  */
 axiosClient.interceptors.response.use(
   (response) => {
-    // Trả về luôn data
-    return response.data;
+    /**
+     * Chuẩn hóa data:
+     * - Nếu backend có { data: ... } → lấy data
+     * - Nếu không → trả luôn response.data
+     */
+    return response.data?.data ?? response.data;
   },
   (error) => {
     const status = error.response?.status;
 
     /**
-     * 401 - Token hết hạn / chưa đăng nhập
-     * Logout + chuyển về trang login
+     * 401 - Hết hạn token
      */
     if (status === 401) {
       localStorage.removeItem("token");
@@ -59,7 +55,7 @@ axiosClient.interceptors.response.use(
     }
 
     /**
-     * 403 - Không có quyền truy cập
+     * 403 - Không có quyền
      */
     if (status === 403) {
       alert("Bạn không có quyền truy cập!");
@@ -70,7 +66,7 @@ axiosClient.interceptors.response.use(
      */
     return Promise.reject({
       message: error.response?.data?.message || "Có lỗi xảy ra",
-      status: status,
+      status,
     });
   }
 );
