@@ -43,7 +43,6 @@ function Dangnhap() {
 
     try {
       setLoading(true);
-
       const res = await authApi.login(formData);
       const token = res.token;
       const role = res.role;
