@@ -1,37 +1,25 @@
 import { useEffect } from "react";
-import Button from "react-bootstrap/Button";
-import Container from "react-bootstrap/Container";
-import Form from "react-bootstrap/Form";
-import Nav from "react-bootstrap/Nav";
-import Navbar from "react-bootstrap/Navbar";
-import NavDropdown from "react-bootstrap/NavDropdown";
-import Offcanvas from "react-bootstrap/Offcanvas";
+import { 
+  Button, Container, Form, Nav, Navbar, 
+  NavDropdown, Offcanvas, Badge 
+} from "react-bootstrap";
 import { FaShoppingCart, FaUser, FaUserPlus } from "react-icons/fa";
 import { TbLogout } from "react-icons/tb";
 import { BsPersonFillGear } from "react-icons/bs"; 
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth"; // Import hook vừa tạo
+import { useAuthContext } from "@/context/AuthContext"; // Sử dụng Context để sync dữ liệu
 import "./Navbar.css";
 
 function MyNavbar() {
-  const { user, loading } = useAuth();
+  // Lấy dữ liệu từ Context (user: thông tin người dùng, logout: hàm đăng xuất)
+  const { user, logout } = useAuthContext(); 
   const navigate = useNavigate();
-
-  const handleLogout = () => {
-    // Xóa toàn bộ dữ liệu đăng nhập
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
-    localStorage.removeItem("role");
-    
-    // Đẩy về trang chủ và load lại trang để xóa sạch state cũ
-    window.location.href = "/";
-  };
 
   return (
     <Navbar expand="lg" className="custom-navbar mb-3 shadow-sm py-3 px-lg-5 border-bottom">
       <Container>
         <Navbar.Brand as={Link} to="/" className="brand-gold fs-5 fw-bold">
-          Dermify - Mỹ Phẩm
+          DERMIFY
         </Navbar.Brand>
         
         <Navbar.Toggle aria-controls="offcanvasNavbar" />
@@ -44,9 +32,9 @@ function MyNavbar() {
           <Offcanvas.Body>
             <Nav className="justify-content-start flex-grow-1 pe-3 text-black">
               <Nav.Link as={Link} to="/" className="nav-link-custom">Trang chủ</Nav.Link>
-              <NavDropdown title="Danh mục sản phẩm" className="nav-link-custom">
-                <NavDropdown.Item>Chăm sóc da</NavDropdown.Item>
-                <NavDropdown.Item>Trang điểm</NavDropdown.Item>
+              <NavDropdown title="Danh mục sản phẩm" className="nav-link-custom" id="nav-dropdown-products">
+                <NavDropdown.Item as={Link} to="/category/skincare">Chăm sóc da</NavDropdown.Item>
+                <NavDropdown.Item as={Link} to="/category/makeup">Trang điểm</NavDropdown.Item>
               </NavDropdown>
             </Nav>
 
@@ -59,22 +47,32 @@ function MyNavbar() {
               <Button className="btn-gold">Tìm</Button>
             </Form>
 
-            <Nav>
-              <Nav.Link as={Link} to="/cart" className="nav-link-custom">
-                <FaShoppingCart className="icon-gold" /> Giỏ hàng
+            <Nav className="align-items-center">
+              {/* GIỎ HÀNG */}
+              <Nav.Link as={Link} to="/cart" className="nav-link-custom position-relative me-2">
+                <FaShoppingCart className="icon-gold fs-5" />
+                <span className="ms-1">Giỏ hàng</span>
+                {/* Sau này Tịnh thêm số lượng giỏ hàng ở đây */}
+                <Badge pill bg="danger" className="position-absolute top-0 start-100 translate-middle" style={{fontSize: '0.6rem'}}>
+                  0
+                </Badge>
               </Nav.Link>
               
+              {/* TÀI KHOẢN */}
               <NavDropdown 
+                align="end"
                 title={
-                  <span className="nav-link-custom">
-                    <BsPersonFillGear className="icon-gold me-1" /> 
-                    {/* Hiển thị tên nếu đã đăng nhập, không thì hiện "Tài khoản" */}
-                    {user ? (user.name || user.email) : "Tài khoản"}
+                  <span className="nav-link-custom d-inline-flex align-items-center">
+                    <BsPersonFillGear className="icon-gold me-2 fs-5" /> 
+                    <span className="fw-bold">
+                      {user ? `Hi, ${user.name || 'Tịnh'}` : "Tài khoản"}
+                    </span>
                   </span>
                 } 
+                id="nav-dropdown-auth"
               >
-                {/* CHƯA ĐĂNG NHẬP */}
                 {!user ? (
+                  /* CHƯA ĐĂNG NHẬP */
                   <>
                     <NavDropdown.Item as={Link} to="/dangki"> 
                       <FaUserPlus className="me-2" />Đăng ký
@@ -87,10 +85,16 @@ function MyNavbar() {
                   /* ĐÃ ĐĂNG NHẬP */
                   <>
                     <NavDropdown.Item as={Link} to="/profile">
-                      <BsPersonFillGear className="me-2" /> Thông tin cá nhân 
+                      <BsPersonFillGear className="me-2" /> Hồ sơ cá nhân 
+                    </NavDropdown.Item>
+                    <NavDropdown.Item as={Link} to="/orders">
+                      <FaShoppingCart className="me-2" /> Đơn hàng của tôi
                     </NavDropdown.Item>
                     <NavDropdown.Divider />
-                    <NavDropdown.Item onClick={handleLogout} className="text-danger">
+                    <NavDropdown.Item 
+                      onClick={logout} 
+                      className="text-danger fw-bold"
+                    >
                       <TbLogout className="me-2" /> Đăng xuất
                     </NavDropdown.Item>
                   </>

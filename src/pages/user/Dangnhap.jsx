@@ -10,12 +10,16 @@ import {
   Col
 } from "react-bootstrap";
 import { useNavigate, Link } from "react-router-dom";
+import { useAuthContext } from "@/context/AuthContext";
 import { authApi } from "@/api";
 
 // Màu chủ đạo Dermify
 const DERMIFY_PINK = "#e60d78";
+// ================== CONTEXT ==================
+
 
 function Dangnhap() {
+  const { loginSuccess } = useAuthContext(); // Lấy hàm loginSuccess từ Context để cập nhật trạng thái đăng nhập
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -62,14 +66,14 @@ function Dangnhap() {
         password: formData.password,
       };
 
+      
       const res = await authApi.login(loginPayload);
-
       // Lưu trữ thông tin (Sửa lại khớp với API trả về)
       localStorage.setItem("accessToken", res.accessToken);
       localStorage.setItem("refreshToken", res.refreshToken);
       localStorage.setItem("role", res.role);
       localStorage.setItem("user", JSON.stringify(res.user)); // Lưu thêm info user nếu có
-
+      loginSuccess();
       navigate("/");
 
     } catch (err) {
