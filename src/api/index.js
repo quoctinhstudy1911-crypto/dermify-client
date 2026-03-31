@@ -6,7 +6,7 @@ export { default as productApi } from "./productApi";
 export { default as categoryApi } from "./categoryApi";
 export { default as cartApi } from "./cartApi";
 export { default as orderApi } from "./orderApi";
-export { default as wishlistApi } from "./wishlistApi";
+export { default as reviewApi } from "./reviewApi";
 export { default as couponApi } from "./couponApi";
 export { default as uploadApi } from "./uploadApi";
 
