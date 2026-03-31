@@ -1,20 +1,14 @@
 import axios from "axios";
 
-/**
- * Axios Client dùng chung cho toàn project
- */
 const axiosClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
-  timeout: 10000, // tránh treo request
+  timeout: 10000,
 });
 
-/**
- * REQUEST INTERCEPTOR
- * - Gắn token vào header
- */
+// REQUEST
 axiosClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("accessToken");
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -25,42 +19,35 @@ axiosClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-/**
- * RESPONSE INTERCEPTOR
- * - Trả về data gọn
- * - Xử lý lỗi chung
- */
+// RESPONSE
+// RESPONSE trong axiosClient.js
 axiosClient.interceptors.response.use(
   (response) => {
-    /**
-     * Chuẩn hóa data:
-     * - Nếu backend có { data: ... } → lấy data
-     * - Nếu không → trả luôn response.data
-     */
     return response.data?.data ?? response.data;
   },
   (error) => {
     const status = error.response?.status;
+    const currentPath = window.location.pathname;
 
-    /**
-     * 401 - Hết hạn token
-     */
     if (status === 401) {
-      localStorage.removeItem("token");
-      alert("Phiên đăng nhập hết hạn, vui lòng đăng nhập lại!");
-      window.location.href = "/dangnhap";
+      // 1. Xóa token cũ
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
+
+      // 2. CHỈ HIỆN ALERT VÀ CHUYỂN TRANG NẾU:
+      // - Không phải đang ở trang đăng nhập/đăng ký
+      // - Và không phải đang ở trang chủ (vì khách vãng lai vẫn xem được trang chủ)
+      const publicPages = ["/dangnhap", "/dangki", "/"];
+      if (!publicPages.includes(currentPath)) {
+        alert("Phiên đăng nhập hết hạn!");
+        window.location.href = "/dangnhap";
+      }
     }
 
-    /**
-     * 403 - Không có quyền
-     */
     if (status === 403) {
-      alert("Bạn không có quyền truy cập!");
+      alert(error.response?.data?.message || "Bạn không có quyền thực hiện thao tác này!");
     }
 
-    /**
-     * Chuẩn hóa lỗi trả về
-     */
     return Promise.reject({
       message: error.response?.data?.message || "Có lỗi xảy ra",
       status,

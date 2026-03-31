@@ -1,23 +1,25 @@
 import { useEffect, useState } from "react";
 import {
-  Container, Card, Form, Button, Row, Col, Image, Spinner, ListGroup, Alert, Modal,
+  Container, Card, Form, Button, Row, Col,
+  Image, Spinner, ListGroup, Alert, Modal, Badge
 } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
-import { userApi} from "@/api";
+import { userApi } from "@/api";
+import { useAuthContext } from "@/context/AuthContext";
+
+// Định nghĩa màu hồng thương hiệu Dermify
+const DERMIFY_PINK = "#e60d76";
 
 function Profile() {
-  const [user, setUser] = useState(null);
+  const navigate = useNavigate();
+  const { user, loginSuccess, loading: authLoading } = useAuthContext();
+
   const [addresses, setAddresses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [preview, setPreview] = useState(null);
-  useEffect(() => {
-  return () => {
-    if (preview) URL.revokeObjectURL(preview);
-  };
-  }, [preview]);
 
   const [profileForm, setProfileForm] = useState({
     name: "", phone: "", gender: "", dateOfBirth: "",
@@ -31,78 +33,59 @@ function Profile() {
     fullName: "", phone: "", street: "", ward: "", district: "", city: "", isDefault: false,
   });
 
-  const navigate = useNavigate();
+  // ================= PREVIEW CLEAN =================
+  useEffect(() => {
+    return () => { if (preview) URL.revokeObjectURL(preview); };
+  }, [preview]);
 
-  // 1. Lấy dữ liệu khi vào trang
-const fetchData = async () => {
-  setLoading(true);
-  setError("");
+  // ================= SYNC USER -> FORM =================
+  useEffect(() => {
+    if (user) {
+      setProfileForm({
+        name: user.name || "",
+        phone: user.phone || "",
+        gender: user.gender || "",
+        dateOfBirth: user.dateOfBirth ? user.dateOfBirth.split("T")[0] : "",
+      });
+    }
+  }, [user]);
 
-  try {
-    // chạy song song (nhanh hơn)
-    const [user, addresses] = await Promise.all([
-      userApi.getProfile(),
-      userApi.getAddresses()
-    ]);
-
-    // set user
-    setUser(user);
-
-    setProfileForm({
-      name: user.name || "",
-      phone: user.phone || "",
-      gender: user.gender || "",
-      dateOfBirth: user.dateOfBirth
-        ? user.dateOfBirth.split("T")[0]
-        : "",
-    });
-
-    // set address
-    setAddresses(Array.isArray(addresses) ? addresses : []);
-
-  } catch (err) {
-    console.error(err);
-    setError("Có lỗi khi tải dữ liệu!");
-  } finally {
-    setLoading(false);
-  }
-};
+  // ================= FETCH ADDRESS =================
+  const fetchAddresses = async () => {
+    try {
+      const res = await userApi.getAddresses();
+      setAddresses(Array.isArray(res) ? res : []);
+    } catch {
+      setError("Không thể tải địa chỉ!");
+    }
+  };
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("accessToken");
     if (!token) {
       navigate("/dangnhap");
       return;
     }
-    fetchData();
+    fetchAddresses();
+    setLoading(false);
   }, [navigate]);
 
-  // 2. Xử lý Profile
+  // ================= PROFILE ACTIONS =================
   const handleProfileChange = (e) => {
-    setProfileForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+    setProfileForm((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
     setSaving(true);
-    setError("");
-    setSuccess("");
-
+    setError(""); setSuccess("");
     try {
-      // Tạo payload từ form, loại bỏ trường gender nếu người dùng không chọn gì (để backend giữ nguyên giá trị cũ)
       const payload = { ...profileForm };
-
-      // Nếu gender là chuỗi rỗng, xóa trường này khỏi payload để backend không cập nhật
-      if (!payload.gender) {
-        delete payload.gender;
-      }
+      if (!payload.gender) delete payload.gender;
       await userApi.updateProfile(payload);
-
-      setSuccess("Cập nhật thông tin thành công!");
-
-      const user = await userApi.getProfile();
-      setUser(user);
-
+      await loginSuccess(); 
+      setSuccess("Thông tin cá nhân đã được cập nhật thành công!");
     } catch (err) {
       setError(err.message || "Cập nhật thất bại!");
     } finally {
@@ -110,18 +93,28 @@ const fetchData = async () => {
     }
   };
 
-  // 3. Xử lý Modal Địa chỉ
-  const openAddModal = (e) => {
-    if (e) e.preventDefault();
+  const handleUploadAvatar = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const previewUrl = URL.createObjectURL(file);
+    setPreview(previewUrl);
+    try {
+      await userApi.uploadAvatar(file);
+      await loginSuccess();
+      setPreview(null);
+      setSuccess("Ảnh đại diện mới đã được cập nhật!");
+    } catch {
+      setError("Tải ảnh lên thất bại!");
+      setPreview(null);
+    }
+  };
+
+  // ================= ADDRESS ACTIONS =================
+  const openAddModal = () => {
     setIsEditing(false);
-    setCurrentAddress(null);
-    
-    // Đảm bảo addresses luôn là mảng để không lỗi .length
-    const currentList = Array.isArray(addresses) ? addresses : [];
-    
     setAddressForm({
       fullName: "", phone: "", street: "", ward: "", district: "", city: "",
-      isDefault: currentList.length === 0, // Tự động tích mặc định nếu chưa có địa chỉ nào
+      isDefault: addresses.length === 0,
     });
     setShowAddressModal(true);
   };
@@ -129,222 +122,180 @@ const fetchData = async () => {
   const openEditModal = (addr) => {
     setIsEditing(true);
     setCurrentAddress(addr);
-    setAddressForm({
-      fullName: addr.fullName || "",
-      phone: addr.phone || "",
-      street: addr.street || "",
-      ward: addr.ward || "",
-      district: addr.district || "",
-      city: addr.city || "",
-      isDefault: addr.isDefault || false,
-    });
+    setAddressForm(addr);
     setShowAddressModal(true);
   };
 
   const handleAddressChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setAddressForm(prev => ({ ...prev, [name]: type === "checkbox" ? checked : value }));
+    setAddressForm((prev) => ({ ...prev, [name]: type === "checkbox" ? checked : value }));
   };
 
-  // 4. Lưu địa chỉ (Thêm/Sửa)
   const handleSaveAddress = async () => {
     setSaving(true);
-    setError(""); setSuccess("");
     try {
-      const addrId = currentAddress?._id || currentAddress?.id;
-      if (isEditing && addrId) {
-        await userApi.updateAddress(addrId, addressForm);
-        setSuccess("Cập nhật địa chỉ thành công!");
+      const id = currentAddress?._id || currentAddress?.id;
+      if (isEditing && id) {
+        await userApi.updateAddress(id, addressForm);
       } else {
         await userApi.addAddress(addressForm);
-        setSuccess("Thêm địa chỉ mới thành công!");
       }
+      await fetchAddresses();
       setShowAddressModal(false);
-        const newList = await userApi.getAddresses();
-        setAddresses(Array.isArray(newList) ? newList : []);
-    } catch (err) {
-      setError(err.message || "Lưu địa chỉ thất bại!");
-    } finally { setSaving(false); }
-  };
-
-  // 5. XỬ LÝ XÓA ĐỊA CHỈ
-  const handleDeleteAddress = async (id) => {
-    if (window.confirm("Bạn có chắc chắn muốn xóa địa chỉ này không?")) {
-      setSaving(true);
-      try {
-        await userApi.deleteAddress(id);
-        setSuccess("Đã xóa địa chỉ!");
-        setAddresses(prev => prev.filter(item => (item._id !== id && item.id !== id)));
-      } catch (err) {
-        setError(err.message || "Không thể xóa địa chỉ này!");
-      } finally {
-        setSaving(false);
-      }
+      setSuccess("Lưu địa chỉ thành công!");
+    } catch {
+      setError("Lỗi khi lưu địa chỉ!");
+    } finally {
+      setSaving(false);
     }
   };
 
-  if (loading) return <Container className="text-center mt-5"><Spinner animation="border" color="#e60d76" /><p>Đang tải dữ liệu...</p></Container>;
+  const handleDeleteAddress = async (id) => {
+    if (!window.confirm("Xóa địa chỉ này?")) return;
+    try {
+      await userApi.deleteAddress(id);
+      setAddresses((prev) => prev.filter((a) => (a._id !== id && a.id !== id)));
+    } catch {
+      setError("Không thể xóa!");
+    }
+  };
+
+  // ================= UI =================
+  if (loading || authLoading) {
+    return (
+      <Container className="text-center mt-5 py-5">
+        <Spinner animation="border" style={{ color: DERMIFY_PINK }} />
+        <p className="mt-2 text-muted">Đang tải hồ sơ Dermify...</p>
+      </Container>
+    );
+  }
 
   return (
     <Container className="mt-5 mb-5">
       <Row className="justify-content-center">
-        <Col md={10} lg={8}>
-          <Card className="shadow border-0" style={{ borderRadius: "15px" }}>
-            <Card.Body className="p-4">
-              <h3 className="text-center mb-4 fw-bold" style={{ color: "#e60d76" }}>QUẢN LÝ TÀI KHOẢN</h3>
+        <Col lg={10}>
+          <Card className="p-4 shadow-sm border-0" style={{ borderRadius: "15px" }}>
+            <h3 className="text-center fw-bold mb-4" style={{ color: DERMIFY_PINK }}>HỒ SƠ CỦA TÔI</h3>
 
-              {error && <Alert variant="danger" dismissible onClose={() => setError("")}>{error}</Alert>}
-              {success && <Alert variant="success" dismissible onClose={() => setSuccess("")}>{success}</Alert>}
+            {error && <Alert variant="danger" dismissible onClose={() => setError("")}>{error}</Alert>}
+            {success && <Alert variant="success" dismissible onClose={() => setSuccess("")}>{success}</Alert>}
 
-              {/* PHẦN PROFILE */}
-              <Form onSubmit={handleUpdateProfile}>
-                <div className="text-center mb-4">
+            <Row className="g-4">
+              {/* CỘT TRÁI: THÔNG TIN CƠ BẢN */}
+              <Col md={5} className="text-center border-end pe-md-4">
+                <div className="mb-4">
                   <Image
-                  src={
-                        preview ||
-                        user?.avatar ||
-                        `https://ui-avatars.com/api/?name=${user?.name || 'User'}&background=random`
-                      }
-                    roundedCircle width={120} height={120} className="border border-3 shadow-sm"
+                    src={preview || user?.avatar || `https://ui-avatars.com/api/?name=${user?.name}&background=random`}
+                    roundedCircle width={150} height={150}
+                    className="border border-4 shadow-sm object-fit-cover"
+                    style={{ borderColor: "#fff" }}
                   />
-                  <div className="mt-3 mx-auto" style={{ maxWidth: "250px" }}>
-                    <Form.Control
-                      type="file"
-                      size="sm"
-                      accept="image/*"
-                  onChange={async (e) => {
-                        const file = e.target.files[0];
-                        if (!file) return;
-
-                        if (!file.type.startsWith("image/")) {
-                          setError("Chỉ được upload ảnh!");
-                          return;
-                        }
-
-                        if (file.size > 2 * 1024 * 1024) {
-                          setError("Ảnh tối đa 2MB!");
-                          return;
-                        }
-
-                        const previewUrl = URL.createObjectURL(file);
-                        setPreview(previewUrl);
-
-                        try {
-                          await userApi.uploadAvatar(file);
-
-                          const newUser = await userApi.getProfile();
-                          setUser(newUser);
-
-                          setPreview(null);
-                          setSuccess("Upload avatar thành công!");
-                        } catch (err) {
-                          setError("Upload thất bại!");
-                        }
-                      }}
-                    />
+                  <div className="mt-3 px-4">
+                    <Form.Control type="file" size="sm" onChange={handleUploadAvatar} accept="image/*" />
+                    <Form.Text className="text-muted">Định dạng: JPG, PNG. Tối đa 2MB</Form.Text>
                   </div>
                 </div>
-
-                <Row>
-                  <Col md={6}><Form.Group className="mb-3"><Form.Label className="fw-bold">Email</Form.Label><Form.Control value={user?.email || ""} disabled /></Form.Group></Col>
-                  <Col md={6}><Form.Group className="mb-3"><Form.Label className="fw-bold">Họ tên</Form.Label><Form.Control name="name" value={profileForm.name} onChange={handleProfileChange} placeholder="Nhập họ tên" /></Form.Group></Col>
-                </Row>
-                <Row>
-                  <Col md={6}><Form.Group className="mb-3"><Form.Label className="fw-bold">Số điện thoại</Form.Label><Form.Control name="phone" value={profileForm.phone} onChange={handleProfileChange} placeholder="Số điện thoại" /></Form.Group></Col>
-                  <Col md={6}>
-                    <Form.Group className="mb-3">
-                      <Form.Label className="fw-bold">Giới tính</Form.Label>
-                      <Form.Select name="gender" value={profileForm.gender} onChange={handleProfileChange}>
-                        <option value="">Chọn giới tính</option>
-                        <option value="male">Nam</option>
-                        <option value="female">Nữ</option>
-                        <option value="other">Khác</option>
-                      </Form.Select>
-                    </Form.Group>
-                  </Col>
-                </Row>
-                <Form.Group className="mb-4"><Form.Label className="fw-bold">Ngày sinh</Form.Label><Form.Control type="date" name="dateOfBirth" value={profileForm.dateOfBirth} onChange={handleProfileChange} /></Form.Group>
-                
-                <Button type="submit" variant="primary" className="w-100 mb-4 py-2 fw-bold" disabled={saving}>
-                  {saving ? <Spinner size="sm" /> : "LƯU THÔNG TIN"}
-                </Button>
-              </Form>
-
-              {/* PHẦN ĐỊA CHỈ */}
-              <hr />
-              <div className="d-flex justify-content-between align-items-center mb-3 mt-4">
-                <h5 className="mb-0 fw-bold" style={{ color: "#e60d76" }}>📍 ĐỊA CHỈ NHẬN HÀNG</h5>
-                <Button variant="success" size="sm" type="button" onClick={openAddModal}>
-                  + Thêm địa chỉ mới
-                </Button>
-              </div>
-
-              {addresses.length === 0 ? (
-                <div className="text-center py-4 border rounded bg-light">
-                   <p className="text-muted mb-0">Bạn chưa lưu địa chỉ nào.</p>
+                <div className="bg-light p-3 rounded-3 text-start">
+                  <small className="fw-bold text-muted d-block mb-1">Email tài khoản:</small>
+                  <span className="text-dark">{user?.email}</span>
                 </div>
+              </Col>
+
+              {/* CỘT PHẢI: FORM CHỈNH SỬA */}
+              <Col md={7} className="ps-md-4">
+                <Form onSubmit={handleUpdateProfile}>
+                  <Form.Group className="mb-3">
+                    <Form.Label className="small fw-bold">Họ và tên</Form.Label>
+                    <Form.Control name="name" value={profileForm.name} onChange={handleProfileChange} placeholder="Nhập họ tên đầy đủ" />
+                  </Form.Group>
+
+                  <Row>
+                    <Col sm={6}>
+                      <Form.Group className="mb-3">
+                        <Form.Label className="small fw-bold">Số điện thoại</Form.Label>
+                        <Form.Control name="phone" value={profileForm.phone} onChange={handleProfileChange} placeholder="Số điện thoại" />
+                      </Form.Group>
+                    </Col>
+                    <Col sm={6}>
+                      <Form.Group className="mb-3">
+                        <Form.Label className="small fw-bold">Giới tính</Form.Label>
+                        <Form.Select name="gender" value={profileForm.gender} onChange={handleProfileChange}>
+                          <option value="">Chọn giới tính</option>
+                          <option value="male">Nam</option>
+                          <option value="female">Nữ</option>
+                          <option value="other">Khác</option>
+                        </Form.Select>
+                      </Form.Group>
+                    </Col>
+                  </Row>
+
+                  <Form.Group className="mb-4">
+                    <Form.Label className="small fw-bold">Ngày sinh</Form.Label>
+                    <Form.Control type="date" name="dateOfBirth" value={profileForm.dateOfBirth} onChange={handleProfileChange} />
+                  </Form.Group>
+
+                  <Button type="submit" className="w-100 fw-bold border-0 py-2" style={{ backgroundColor: DERMIFY_PINK }} disabled={saving}>
+                    {saving ? <Spinner size="sm" /> : "LƯU THAY ĐỔI"}
+                  </Button>
+                </Form>
+              </Col>
+            </Row>
+
+            {/* PHẦN ĐỊA CHỈ - TỐI ƯU BỐ CỤC */}
+            <hr className="my-5" />
+            <div className="d-flex justify-content-between align-items-center mb-4">
+              <h5 className="fw-bold m-0" style={{ color: "#333" }}>📍 SỔ ĐỊA CHỈ</h5>
+              <Button size="sm" className="fw-bold" style={{ backgroundColor: DERMIFY_PINK, border: "none" }} onClick={openAddModal}>
+                + Thêm địa chỉ mới
+              </Button>
+            </div>
+
+            <ListGroup variant="flush">
+              {addresses.length === 0 ? (
+                <div className="text-center py-4 text-muted border rounded-3 bg-light">Bạn chưa có địa chỉ lưu sẵn.</div>
               ) : (
-                <ListGroup variant="flush">
-                  {addresses.map((addr) => (
-                    <ListGroup.Item key={addr._id || addr.id} className="px-0 py-3 border-bottom d-flex justify-content-between align-items-center">
-                      <div>
-                        <div className="fw-bold">{addr.fullName} <span className="fw-normal text-muted ms-2">| {addr.phone}</span></div>
-                        <div className="text-secondary small mt-1">
-                          {addr.street}, {addr.ward}, {addr.district}, {addr.city}
-                        </div>
-                        {addr.isDefault && <span className="badge bg-danger-subtle text-danger border border-danger mt-2">Mặc định</span>}
+                addresses.map((addr) => (
+                  <ListGroup.Item key={addr._id || addr.id} className="px-0 py-3 border-bottom d-flex justify-content-between align-items-center">
+                    <div>
+                      <div className="fw-bold">
+                        {addr.fullName} <span className="text-muted fw-normal ms-2">| {addr.phone}</span>
+                        {addr.isDefault && <Badge bg="danger-subtle" className="ms-2 text-danger border border-danger fw-normal">Mặc định</Badge>}
                       </div>
-                      <div className="d-flex gap-2">
-                        <Button variant="link" className="p-0 text-primary text-decoration-none small" onClick={() => openEditModal(addr)}>Sửa</Button>
-                        <Button variant="link" className="p-0 text-danger text-decoration-none small" onClick={() => handleDeleteAddress(addr._id || addr.id)}>Xóa</Button>
-                      </div>
-                    </ListGroup.Item>
-                  ))}
-                </ListGroup>
+                      <div className="small text-secondary mt-1">{addr.street}, {addr.ward}, {addr.district}, {addr.city}</div>
+                    </div>
+                    <div className="d-flex gap-2">
+                      <Button variant="link" size="sm" className="p-0 text-decoration-none text-primary" onClick={() => openEditModal(addr)}>Sửa</Button>
+                      <Button variant="link" size="sm" className="p-0 text-decoration-none text-danger" onClick={() => handleDeleteAddress(addr._id || addr.id)}>Xóa</Button>
+                    </div>
+                  </ListGroup.Item>
+                ))
               )}
-            </Card.Body>
+            </ListGroup>
           </Card>
         </Col>
       </Row>
 
       {/* MODAL THÊM/SỬA ĐỊA CHỈ */}
-      <Modal show={showAddressModal} onHide={() => setShowAddressModal(false)} centered backdrop="static">
-        <Modal.Header closeButton className="bg-light">
-          <Modal.Title className="fs-5 fw-bold">{isEditing ? "CẬP NHẬT ĐỊA CHỈ" : "THÊM ĐỊA CHỈ MỚI"}</Modal.Title>
+      <Modal show={showAddressModal} onHide={() => setShowAddressModal(false)} centered>
+        <Modal.Header closeButton className="border-0 pb-0">
+          <Modal.Title className="fw-bold fs-5">THÔNG TIN ĐỊA CHỈ</Modal.Title>
         </Modal.Header>
-        <Modal.Body>
-            <Form>
-                <Row>
-                  <Col md={6}>
-                    <Form.Group className="mb-3">
-                        <Form.Label className="small fw-bold">Họ và tên</Form.Label>
-                        <Form.Control name="fullName" value={addressForm.fullName} onChange={handleAddressChange} placeholder="Tên người nhận" />
-                    </Form.Group>
-                  </Col>
-                  <Col md={6}>
-                    <Form.Group className="mb-3">
-                        <Form.Label className="small fw-bold">Số điện thoại</Form.Label>
-                        <Form.Control name="phone" value={addressForm.phone} onChange={handleAddressChange} placeholder="0xxx..." />
-                    </Form.Group>
-                  </Col>
-                </Row>
-                <Form.Group className="mb-3">
-                    <Form.Label className="small fw-bold">Địa chỉ cụ thể (Số nhà, đường)</Form.Label>
-                    <Form.Control name="street" value={addressForm.street} onChange={handleAddressChange} placeholder="VD: 123 Lý Tự Trọng" />
-                </Form.Group>
-                <Row>
-                    <Col md={4}><Form.Group className="mb-3"><Form.Label className="small fw-bold">Phường/Xã</Form.Label><Form.Control name="ward" value={addressForm.ward} onChange={handleAddressChange} /></Form.Group></Col>
-                    <Col md={4}><Form.Group className="mb-3"><Form.Label className="small fw-bold">Quận/Huyện</Form.Label><Form.Control name="district" value={addressForm.district} onChange={handleAddressChange} /></Form.Group></Col>
-                    <Col md={4}><Form.Group className="mb-3"><Form.Label className="small fw-bold">Thành phố</Form.Label><Form.Control name="city" value={addressForm.city} onChange={handleAddressChange} /></Form.Group></Col>
-                </Row>
-                <Form.Group className="mb-3">
-                    <Form.Check type="checkbox" name="isDefault" label="Đặt làm địa chỉ mặc định" checked={addressForm.isDefault} onChange={handleAddressChange} />
-                </Form.Group>
-            </Form>
+        <Modal.Body className="pt-3">
+          <Form>
+            <Row className="g-3">
+              <Col md={6}><Form.Control name="fullName" value={addressForm.fullName} onChange={handleAddressChange} placeholder="Tên người nhận" /></Col>
+              <Col md={6}><Form.Control name="phone" value={addressForm.phone} onChange={handleAddressChange} placeholder="Số điện thoại" /></Col>
+              <Col md={12}><Form.Control name="street" value={addressForm.street} onChange={handleAddressChange} placeholder="Địa chỉ chi tiết (Số nhà, tên đường...)" /></Col>
+              <Col md={4}><Form.Control name="ward" value={addressForm.ward} onChange={handleAddressChange} placeholder="Phường/Xã" /></Col>
+              <Col md={4}><Form.Control name="district" value={addressForm.district} onChange={handleAddressChange} placeholder="Quận/Huyện" /></Col>
+              <Col md={4}><Form.Control name="city" value={addressForm.city} onChange={handleAddressChange} placeholder="Tỉnh/Thành phố" /></Col>
+            </Row>
+            <Form.Check type="checkbox" name="isDefault" label="Đặt làm địa chỉ mặc định" checked={addressForm.isDefault} onChange={handleAddressChange} className="mt-3 small" />
+          </Form>
         </Modal.Body>
-        <Modal.Footer className="border-0">
-          <Button variant="light" onClick={() => setShowAddressModal(false)}>Hủy</Button>
-          <Button variant="primary" onClick={handleSaveAddress} disabled={saving} className="px-4">
+        <Modal.Footer className="border-0 pt-0">
+          <Button variant="light" className="fw-bold" onClick={() => setShowAddressModal(false)}>Hủy</Button>
+          <Button className="fw-bold" style={{ backgroundColor: DERMIFY_PINK, border: "none" }} onClick={handleSaveAddress} disabled={saving}>
             {saving ? "Đang lưu..." : "Lưu địa chỉ"}
           </Button>
         </Modal.Footer>

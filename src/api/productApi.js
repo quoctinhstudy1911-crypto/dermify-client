@@ -1,25 +1,46 @@
 import axiosClient from "./axiosClient";
 
 const productApi = {
-  // Lấy danh sách sản phẩm (có thể truyền params)
-  getProducts: (params) =>
-    axiosClient.get("/products", { params }),
+  /**
+   * Lấy danh sách sản phẩm (có phân trang, lọc, tìm kiếm)
+   * @param {Object} params { page, limit, search, categoryId, minPrice, maxPrice, sort }
+   */
+  getProducts: (params) => {
+    return axiosClient.get("/product", { params });
+  },
 
-  // Lấy chi tiết sản phẩm theo slug
-  getProductDetail: (slug) =>
-    axiosClient.get(`/products/${slug}`),
+  /**
+   * Xem chi tiết sản phẩm qua Slug (Dành cho trang chi tiết sản phẩm)
+   * @param {String} slug 
+   */
+  getProductDetail: (slug) => {
+    return axiosClient.get(`/product/${slug}`);
+  },
 
-  // Tạo sản phẩm mới
-  createProduct: (data) =>
-    axiosClient.post("/products", data),
+  /**
+   * Thêm sản phẩm mới (Dành cho Admin)
+   * @param {Object} data 
+   */
+  createProduct: (data) => {
+    return axiosClient.post("/product", data);
+  },
 
-  // Cập nhật sản phẩm theo ID
-  updateProduct: (id, data) =>
-    axiosClient.put(`/products/${id}`, data),
+  /**
+   * Cập nhật thông tin sản phẩm (Dành cho Admin)
+   * @param {String} id 
+   * @param {Object} data 
+   */
+  updateProduct: (id, data) => {
+    return axiosClient.put(`/product/${id}`, data);
+  },
 
-  // Xóa sản phẩm theo ID
-  deleteProduct: (id) =>
-    axiosClient.delete(`/products/${id}`),
+  /**
+   * Xóa sản phẩm - Soft Delete (Dành cho Admin)
+   * @param {String} id 
+   */
+  deleteProduct: (id) => {
+    return axiosClient.delete(`/product/${id}`);
+  },
 };
 
 export default productApi;
