@@ -73,9 +73,15 @@ function Dangnhap() {
       localStorage.setItem("refreshToken", res.refreshToken);
       localStorage.setItem("role", res.role);
       localStorage.setItem("user", JSON.stringify(res.user)); // Lưu thêm info user nếu có
-      loginSuccess();
-      navigate("/");
-
+      await loginSuccess();
+      const role = res.role;
+      // Điều hướng dựa trên vai trò
+      if (role === "customer") {
+        navigate("/");
+      } else {
+        navigate("/admin/dashboard");
+      }
+    
     } catch (err) {
       // Hiển thị lỗi chi tiết từ Server (ví dụ: "Tài khoản chưa xác thực")
       setError(err?.response?.data?.message || err?.message || "Sai email hoặc mật khẩu");
