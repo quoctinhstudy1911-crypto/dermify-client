@@ -21,6 +21,15 @@ export const AuthProvider = ({ children }) => {
     }
 
     try {
+      // 🔥 Check if user is in localStorage (from login response - especially admin)
+      const cachedUser = localStorage.getItem("user");
+      if (cachedUser) {
+        const user = JSON.parse(cachedUser);
+        setUser(user);
+        return;
+      }
+
+      // Otherwise, fetch from API (for regular customers)
       const res = await userApi.getProfile();
       setUser(res);
     } catch (err) {
