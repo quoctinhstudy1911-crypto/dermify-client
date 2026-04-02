@@ -1,19 +1,33 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import { userApi, cartApi } from "@/api";
+import { cartApi } from "@/api";
+import authApi from "@/api/authApi";
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [cartCount, setCartCount] = useState(0);
-  const [loading, setLoading] = useState(true); // 🔥 thêm loading
+  const [user, setUser] = useState(() => {
+    try {
+      const stored = localStorage.getItem("user");
+      if (!stored || stored === "undefined") return null;
+      return JSON.parse(stored);
+    } catch {
+      return null;
+    }
+  });
 
-  // ✅ CHECK LOGIN
+  const [cartCount, setCartCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  // ======================
+  // CHECK LOGIN
+  // ======================
   const isLoggedIn = () => {
     return !!localStorage.getItem("accessToken");
   };
 
-  // ✅ GET USER
+  // ======================
+  // GET USER (QUAN TRỌNG)
+  // ======================
   const fetchMe = async () => {
     if (!isLoggedIn()) {
       setUser(null);
@@ -21,26 +35,34 @@ export const AuthProvider = ({ children }) => {
     }
 
     try {
-      // 🔥 Check if user is in localStorage (from login response - especially admin)
+      // ưu tiên cache
       const cachedUser = localStorage.getItem("user");
-      if (cachedUser) {
-        const user = JSON.parse(cachedUser);
-        setUser(user);
+
+      if (cachedUser && cachedUser !== "undefined") {
+        const parsed = JSON.parse(cachedUser);
+        setUser(parsed);
         return;
       }
 
-      // Otherwise, fetch from API (for regular customers)
-      const res = await userApi.getProfile();
+      // gọi API đúng
+      const res = await authApi.getMe();
+
       setUser(res);
+      localStorage.setItem("user", JSON.stringify(res));
     } catch (err) {
-      // 🔥 token sai / hết hạn
+      console.log("AUTH ERROR:", err);
+
       localStorage.removeItem("accessToken");
       localStorage.removeItem("refreshToken");
+      localStorage.removeItem("user");
+
       setUser(null);
     }
   };
 
-  // ✅ GET CART (FIX 401)
+  // ======================
+  // GET CART
+  // ======================
   const fetchCart = async () => {
     if (!isLoggedIn()) {
       setCartCount(0);
@@ -55,7 +77,9 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // ✅ LOAD LẦN ĐẦU
+  // ======================
+  // INIT APP
+  // ======================
   useEffect(() => {
     const init = async () => {
       await fetchMe();
@@ -66,13 +90,17 @@ export const AuthProvider = ({ children }) => {
     init();
   }, []);
 
-  // ✅ SAU LOGIN
+  // ======================
+  // AFTER LOGIN
+  // ======================
   const loginSuccess = async () => {
     await fetchMe();
     await fetchCart();
   };
 
-  // ✅ LOGOUT
+  // ======================
+  // LOGOUT
+  // ======================
   const logout = () => {
     localStorage.clear();
     setUser(null);
@@ -94,5 +122,7 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-// ✅ HOOK
+// ======================
+// HOOK
+// ======================
 export const useAuthContext = () => useContext(AuthContext);

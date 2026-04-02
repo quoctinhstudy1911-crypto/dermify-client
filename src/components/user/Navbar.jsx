@@ -14,7 +14,7 @@ function MyNavbar() {
   // Lấy dữ liệu từ Context (user: thông tin người dùng, logout: hàm đăng xuất)
   const { user, logout } = useAuthContext(); 
   const navigate = useNavigate();
-
+ 
   return (
     <Navbar expand="lg" className="custom-navbar mb-3 shadow-sm py-3 px-lg-5 border-bottom">
       <Container>

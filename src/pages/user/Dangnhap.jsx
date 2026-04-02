@@ -72,8 +72,10 @@ function Dangnhap() {
       localStorage.setItem("accessToken", res.accessToken);
       localStorage.setItem("refreshToken", res.refreshToken);
       localStorage.setItem("role", res.role);
-      localStorage.setItem("user", JSON.stringify(res.user)); // Lưu thêm info user nếu có
-      await loginSuccess();
+      if (res.user) {
+      localStorage.setItem("user", JSON.stringify(res.user));
+      }
+      await loginSuccess(res.user);
       const role = res.role;
       // Điều hướng dựa trên vai trò
       if (role === "customer") {
