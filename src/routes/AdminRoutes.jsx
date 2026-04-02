@@ -1,17 +1,15 @@
-import { Route, Navigate } from "react-router-dom";
+import { Route } from "react-router-dom";
 import AdminLayout from "../layouts/AdminLayout";
 import AdminDashboard from "../pages/admin/AdminDashboard";
+import SanPham from "../pages/admin/SanPham";
 
 export default function AdminRoutes() {
-  const role = localStorage.getItem("role");
-
-  if (!role || role === "customer") {
-    return <Route path="/admin/*" element={<Navigate to="/" />} />;
-  }
-
   return (
-    <Route path="/admin" element={<AdminLayout />}>
-      <Route index element={<AdminDashboard />} />
-    </Route>
+    <>
+      <Route path="/admin" element={<AdminLayout />}>
+        <Route index element={<AdminDashboard />} />
+        <Route path="products" element={<SanPham />} />
+      </Route>
+    </>
   );
 }
