@@ -17,7 +17,6 @@ export default function SanPham() {
   });
   const [imageFile, setImageFile] = useState(null);
 
-  // 👉 format giá dạng xxx.000 VND
   const formatPrice = (p) => {
     if (!p && p !== 0) return "0 VND";
     const nghin = Math.floor(Number(p) / 1000);

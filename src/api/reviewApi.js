@@ -6,7 +6,7 @@ const reviewApi = {
    * @param {Object} data { productId, rating, comment, images }
    */
   createReview: (data) => {
-    return axiosClient.post("/review", data);
+    return axiosClient.post("/reviews", data);
   },
 
   /**
@@ -15,7 +15,7 @@ const reviewApi = {
    * @param {Object} params { page, limit }
    */
   getProductReviews: (productId, params) => {
-    return axiosClient.get(`/review/${productId}`, { params });
+    return axiosClient.get(`/reviews/${productId}`, { params });
   },
 
   /**
@@ -24,7 +24,7 @@ const reviewApi = {
    * @param {Object} data { rating, comment, images }
    */
   updateReview: (reviewId, data) => {
-    return axiosClient.put(`/review/${reviewId}`, data);
+    return axiosClient.put(`/reviews/${reviewId}`, data);
   },
 
   /**
@@ -32,7 +32,7 @@ const reviewApi = {
    * @param {String} reviewId 
    */
   deleteReview: (reviewId) => {
-    return axiosClient.delete(`/review/${reviewId}`);
+    return axiosClient.delete(`/reviews/${reviewId}`);
   },
 };
 

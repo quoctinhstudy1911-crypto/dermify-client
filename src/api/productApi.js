@@ -6,7 +6,7 @@ const productApi = {
    * @param {Object} params { page, limit, search, categoryId, minPrice, maxPrice, sort }
    */
   getProducts: (params) => {
-    return axiosClient.get("/product", { params });
+    return axiosClient.get("/products", { params });
   },
 
   /**
@@ -14,7 +14,7 @@ const productApi = {
    * @param {String} slug 
    */
   getProductDetail: (slug) => {
-    return axiosClient.get(`/product/${slug}`);
+    return axiosClient.get(`/products/${slug}`);
   },
 
   /**
@@ -22,7 +22,7 @@ const productApi = {
    * @param {Object} data 
    */
   createProduct: (data) => {
-    return axiosClient.post("/product", data);
+    return axiosClient.post("/products", data);
   },
 
   /**
@@ -31,7 +31,7 @@ const productApi = {
    * @param {Object} data 
    */
   updateProduct: (id, data) => {
-    return axiosClient.put(`/product/${id}`, data);
+    return axiosClient.put(`/products/${id}`, data);
   },
 
   /**
@@ -39,7 +39,7 @@ const productApi = {
    * @param {String} id 
    */
   deleteProduct: (id) => {
-    return axiosClient.delete(`/product/${id}`);
+    return axiosClient.delete(`/products/${id}`);
   },
 };
 
