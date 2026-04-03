@@ -6,7 +6,7 @@ const categoryApi = {
    * Dùng để đổ vào Menu hoặc Sidebar lọc sản phẩm
    */
   getCategoryTree: () => {
-    return axiosClient.get("/categories/tree");
+    return axiosClient.get("/categories");
   },
 
   /**

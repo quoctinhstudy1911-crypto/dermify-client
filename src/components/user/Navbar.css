@@ -1,22 +1,61 @@
-.admin-navbar {
-  height: 60px;
-  background: #fff;
-  border-bottom: 1px solid #eee;
-
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-
-  padding: 0 20px;
+/* NỀN NAVBAR */
+.custom-navbar {
+  background-color: #FF3399; /* hồng đậm */
 }
 
-.admin-title {
-  font-weight: 600;
-  margin: 0;
+/* LOGO */
+.brand-gold {
+  color: #f0eded !important; /* đỏ đậm */
+  font-size: 28px; /* to hơn */
+  font-weight: bold;
 }
 
-.admin-avatar {
-  width: 35px;
-  height: 35px;
-  border-radius: 50%;
+/* LINK MENU */
+.nav-link-custom {
+  color: #000 !important; /* chữ đen */
+  font-size: 1.1rem; /* to hơn */
+  font-weight: 500;
+  transition: 0.3s;
+}
+
+/* HOVER LINK */
+.nav-link-custom:hover {
+  color: #c1121f !important; /* hover chuyển đỏ */
+}
+
+/* ICON */
+.icon-gold {
+  color: #000; /* icon đen */
+  font-size: 1.2rem;
+}
+
+/* SEARCH */
+.search-input-gold {
+  border-radius: 20px;
+  border: 1px solid #ccc;
+  font-size: 1rem;
+}
+
+/* BUTTON TÌM */
+.btn-gold {
+  background-color: #c1121f; /* đỏ */
+  color: #fff;
+  border: none;
+  border-radius: 20px;
+  padding: 6px 16px;
+  font-size: 1rem;
+}
+
+.btn-gold:hover {
+  background-color: #9b0e19;
+}
+
+/* DROPDOWN */
+.dropdown-menu {
+  font-size: 1rem;
+}
+
+/* OFFCANVAS (menu mobile) */
+.offcanvas {
+  background-color: #ffe5ec; /* hồng nhạt cho dễ nhìn */
 }

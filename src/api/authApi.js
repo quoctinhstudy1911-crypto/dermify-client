@@ -17,8 +17,7 @@ const authApi = {
   // VERIFY EMAIL
   // ======================
 
-  verifyEmail: (token) =>
-    axiosClient.get(`/auth/verify-email?token=${token}`),
+  verifyEmail: (token) => axiosClient.get(`/auth/verify-email?token=${token}`),
 
   // ======================
   // PASSWORD
@@ -27,8 +26,7 @@ const authApi = {
   forgotPassword: (email) =>
     axiosClient.post("/auth/forgot-password", { email }),
 
-  resetPassword: (data) =>
-    axiosClient.post("/auth/reset-password", data),
+  resetPassword: (data) => axiosClient.post("/auth/reset-password", data),
 
   // ======================
   // TOKEN

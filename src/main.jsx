@@ -4,11 +4,13 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import './index.css'
 import { AuthProvider } from "@/context/AuthContext";
 import App from './App.jsx'
-
+import { CartProvider } from './context/CartContext';
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <AuthProvider>
-      <App />
+     <CartProvider>
+        <App />
+      </CartProvider>
     </AuthProvider>
   </StrictMode>
 );

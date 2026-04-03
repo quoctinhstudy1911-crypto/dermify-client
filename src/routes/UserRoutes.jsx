@@ -7,9 +7,11 @@ import Profile from "../pages/user/Profile";
 import VerifyEmail from "../pages/user/VerifyEmail";
 import ForgotPassword from "../pages/user/ForgotPassword";
 import ResetPassword from "../pages/user/ResetPassword";
-
-// Component bảo vệ route dành cho user
+import ProductList from "../pages/user/ProductList";
 import { useAuthContext } from "@/context/AuthContext";
+import ProductDetail from "@/pages/user/ProductDetail";
+import Cart from "@/pages/user/Cart";
+import Checkout from "@/pages/user/Checkout";
 
 const RequireUser = ({ children }) => {
   const { user, loading } = useAuthContext();
@@ -22,7 +24,6 @@ const RequireUser = ({ children }) => {
     return <Navigate to="/dangnhap" />;
   }
 
-  // Nếu user có role khác "customer" (ví dụ admin) thì chuyển về trang admin
   if (user.role !== "customer") {
     return <Navigate to="/admin" />;
   }
@@ -43,7 +44,11 @@ export default function UserRoutes() {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/verify-email" element={<VerifyEmail />} />
-
+      <Route path="/products" element={<ProductList />} />
+      <Route path="/category/:slug" element={<ProductList />} />
+      <Route path="/product/:slug" element={<ProductDetail />} />
+      <Route path="/cart" element={<Cart />} />
+      <Route path="/checkout" element={<Checkout />} />
       {/* PRIVATE */}
       <Route
         element={

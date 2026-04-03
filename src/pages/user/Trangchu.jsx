@@ -1,8 +1,11 @@
+import DarkVariantExample from "@/components/user/Carousels";
 
 function Trangchu() {
-
-  return <h1>Trang chủ</h1>;
-
+  return (
+    <div>
+      <DarkVariantExample />
+    </div>
+  );
 }
 
 export default Trangchu;
