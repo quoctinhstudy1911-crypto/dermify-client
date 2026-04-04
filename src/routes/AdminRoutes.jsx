@@ -1,45 +1,41 @@
-import { Route, Navigate } from "react-router-dom";
+import { Route, Navigate, Outlet } from "react-router-dom";
+// Import các component cần thiết
 import AdminLayout from "../layouts/AdminLayout";
+// Import các trang admin
 import AdminDashboard from "../pages/admin/AdminDashboard";
 import SanPham from "../pages/admin/SanPham";
 import DangNhap from "../pages/admin/DangNhap";
 
 // Component bảo vệ route dành cho admin
-const RequireAdmin = ({ children }) => {
+const RequireAdmin = () => {
+  // Lấy token và role từ localStorage (khác với customer dùng context)
   const token = localStorage.getItem("accessToken");
   const role = localStorage.getItem("role");
-
-  // chưa login
+// Nếu không có token, chuyển hướng đến trang đăng nhập
   if (!token) {
-    return <Navigate to="/admin/login" />;
-  }
-  
-  // không phải admin hoặc super_admin
-  if (!["admin", "super_admin"].includes(role)) {
-    return <Navigate to="/" />;
+    return <Navigate to="/admin/login" replace />;
   }
 
-  return children;
+  if (!["admin", "super_admin"].includes(role)) {
+    return <Navigate to="/" replace />;
+  }
+
+  return <Outlet />;
 };
 
+// Định nghĩa các route cho admin
 export default function AdminRoutes() {
   return (
     <>
-      {/* LOGIN ADMIN */}
+      {/* Route đăng nhập admin không cần bảo vệ */}
       <Route path="/admin/login" element={<DangNhap />} />
-
-      {/* ADMIN (cần login) */}
-      <Route
-        path="/admin"
-        element={
-          <RequireAdmin>
-            <AdminLayout />
-          </RequireAdmin>
-        }
-      >
-        <Route index element={<AdminDashboard />} />
-        <Route path="dashboard" element={<AdminDashboard />} />
-        <Route path="products" element={<SanPham />} />
+      
+      {/* Các route admin khác được bảo vệ bởi RequireAdmin */}
+      <Route element={<RequireAdmin />}>
+        <Route element={<AdminLayout />}>
+          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin/products" element={<SanPham />} />
+        </Route>
       </Route>
     </>
   );

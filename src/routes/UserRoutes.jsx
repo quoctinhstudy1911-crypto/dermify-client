@@ -1,5 +1,11 @@
-import { Route, Navigate } from "react-router-dom";
+
+import { Route, Navigate, Outlet, useLocation  } from "react-router-dom";
+import { useAuthContext } from "@/context/AuthContext";
+
+// Layouts
 import UserLayout from "../layouts/UserLayout";
+
+// Pages
 import Tc from "../pages/user/Trangchu";
 import Dangki from "../pages/user/Dangki";
 import Dangnhap from "../pages/user/Dangnhap";
@@ -8,56 +14,62 @@ import VerifyEmail from "../pages/user/VerifyEmail";
 import ForgotPassword from "../pages/user/ForgotPassword";
 import ResetPassword from "../pages/user/ResetPassword";
 import ProductList from "../pages/user/ProductList";
-import { useAuthContext } from "@/context/AuthContext";
 import ProductDetail from "@/pages/user/ProductDetail";
 import Cart from "@/pages/user/Cart";
 import Checkout from "@/pages/user/Checkout";
 
-const RequireUser = ({ children }) => {
+// Kiểm tra nếu đã đăng nhập và có role là "customer" thì mới cho truy cập vào các route con của UserLayout
+const RequireUser = () => {
   const { user, loading } = useAuthContext();
+  const location = useLocation();
 
-  // Nếu đang load (kiểm tra token, lấy thông tin user...) thì không render gì cả (hoặc có thể render spinner)
-  if (loading) return null;
-
-  // Nếu không có user nào (chưa đăng nhập) thì chuyển về trang đăng nhập
+  // ĐANG LOAD THÌ ĐỨNG YÊN, ĐỪNG CHUYỂN TRANG
+  if (loading) {
+    return <div className="text-center mt-5">Đang xác thực...</div>;
+  }
+  
+  // CHƯA ĐĂNG NHẬP THÌ CHUYỂN VỀ TRANG ĐĂNG NHẬP
   if (!user) {
-    return <Navigate to="/dangnhap" />;
+    return <Navigate to="/dangnhap" state={{ from: location }} replace />;
   }
 
-  if (user.role !== "customer") {
-    return <Navigate to="/admin" />;
+   // 3. Không phải customer → đá về trang chủ
+  if (!user.role || user.role.toLowerCase() !== "customer") {
+    return <Navigate to="/" replace />;
   }
 
-  return children;
+  return <Outlet />;
 };
 
+//
+// ROUTES
+//
 export default function UserRoutes() {
   return (
     <>
-      {/* PUBLIC */}
+      {/* ================= PUBLIC ROUTES ================= */}
       <Route element={<UserLayout />}>
         <Route path="/" element={<Tc />} />
+        <Route path="/products" element={<ProductList />} />
+        <Route path="/category/:slug" element={<ProductList />} />
+        <Route path="/product/:slug" element={<ProductDetail />} />
+        <Route path="/cart" element={<Cart />} />
+       
       </Route>
 
+      {/* không cần layout */}
       <Route path="/dangki" element={<Dangki />} />
       <Route path="/dangnhap" element={<Dangnhap />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/verify-email" element={<VerifyEmail />} />
-      <Route path="/products" element={<ProductList />} />
-      <Route path="/category/:slug" element={<ProductList />} />
-      <Route path="/product/:slug" element={<ProductDetail />} />
-      <Route path="/cart" element={<Cart />} />
-      <Route path="/checkout" element={<Checkout />} />
-      {/* PRIVATE */}
-      <Route
-        element={
-          <RequireUser>
-            <UserLayout />
-          </RequireUser>
-        }
-      >
-        <Route path="/profile" element={<Profile />} />
+
+      {/* ================= PRIVATE ROUTES ================= */}
+      <Route element={<RequireUser />}>
+        <Route element={<UserLayout />}>
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/checkout" element={<Checkout />} />
+        </Route>
       </Route>
     </>
   );

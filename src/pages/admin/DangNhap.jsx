@@ -21,7 +21,7 @@ export default function DangNhap() {
     if (error) setError("");
   };
 
- const handleSubmit = async (e) => {
+const handleSubmit = async (e) => {
   e.preventDefault();
 
   if (!formData.email || !formData.password) {
@@ -33,70 +33,112 @@ export default function DangNhap() {
     setLoading(true);
     setError("");
 
-    const res = await authApi.login({
+    const loginPayload = {
       email: formData.email.trim().toLowerCase(),
       password: formData.password,
-    });
+    };
 
-    const { accessToken, refreshToken, role, user } = res;
+    const res = await authApi.login(loginPayload);
 
-    // check quyền
-    if (!["admin", "super_admin"].includes(role)) {
-      setError("Bạn không có quyền truy cập admin");
+    const { accessToken, refreshToken, user } = res;
+
+    // CHỈ CHO ADMIN LOGIN
+    if (!["admin", "super_admin"].includes(user?.role)) {
+      setError("Bạn không có quyền truy cập trang quản trị");
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
+      localStorage.removeItem("user");
       return;
     }
 
-    // lưu
+    // Lưu token
     localStorage.setItem("accessToken", accessToken);
     localStorage.setItem("refreshToken", refreshToken);
-    localStorage.setItem("role", role);
 
+    // Lưu user
     if (user) {
       localStorage.setItem("user", JSON.stringify(user));
     }
 
-    navigate("/admin/dashboard");
+    // Redirect admin
+    navigate("/admin", { replace: true });
 
   } catch (err) {
-    setError(err?.response?.data?.message || err.message || "Đăng nhập thất bại");
+    setError(err?.message || "Đăng nhập thất bại");
   } finally {
     setLoading(false);
   }
 };
 
-  return (
-    <Container className="d-flex justify-content-center align-items-center vh-100">
-      <Card className="p-4 shadow" style={{ width: 400 }}>
-        <h3 className="text-center mb-3">Admin Login</h3>
+return (
+    <Container className="d-flex justify-content-center align-items-center vh-100 bg-light">
+      <Card className="border-0 shadow-lg p-4" style={{ width: "100%", maxWidth: 400, borderRadius: "15px" }}>
+        <Card.Body>
+          <div className="text-center mb-4">
+            <h3 className="fw-bold text-primary">ADMIN PANEL</h3>
+            <p className="text-muted small">Vui lòng đăng nhập để tiếp tục</p>
+          </div>
 
-        {error && <div className="alert alert-danger">{error}</div>}
+          {error && (
+            <div className="alert alert-danger py-2 small text-center border-0" role="alert">
+              {error}
+            </div>
+          )}
 
-        <Form onSubmit={handleSubmit}>
-          <Form.Control
-            className="mb-3"
-            name="email"
-            placeholder="Email"
-            value={formData.email}
-            onChange={handleChange}
-          />
+          <Form onSubmit={handleSubmit}>
+            <Form.Group className="mb-3">
+              <Form.Label className="small fw-semibold">Email quản trị</Form.Label>
+              <Form.Control
+                type="email"
+                name="email"
+                placeholder="admin@example.com"
+                value={formData.email}
+                onChange={handleChange}
+                disabled={loading}
+                style={{ padding: "0.75rem" }}
+              />
+            </Form.Group>
 
-          <InputGroup className="mb-3">
-            <Form.Control
-              type={showPassword ? "text" : "password"}
-              name="password"
-              placeholder="Password"
-              value={formData.password}
-              onChange={handleChange}
-            />
-            <Button onClick={() => setShowPassword(!showPassword)}>
-              👁
+            <Form.Group className="mb-4">
+              <Form.Label className="small fw-semibold">Mật khẩu</Form.Label>
+              <InputGroup>
+                <Form.Control
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  placeholder="••••••••"
+                  value={formData.password}
+                  onChange={handleChange}
+                  disabled={loading}
+                  style={{ padding: "0.75rem", borderRight: "none" }}
+                />
+                <Button 
+                  variant="outline-secondary" 
+                  style={{ borderLeft: "none", background: "transparent", color: "#6c757d" }}
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? "👁️" : "🙈"}
+                </Button>
+              </InputGroup>
+            </Form.Group>
+
+            <Button 
+              type="submit" 
+              variant="primary" 
+              className="w-100 py-2 fw-bold shadow-sm" 
+              disabled={loading}
+              style={{ borderRadius: "8px" }}
+            >
+              {loading ? (
+                <>
+                  <Spinner animation="border" size="sm" className="me-2" />
+                  Đang xử lý...
+                </>
+              ) : (
+                "ĐĂNG NHẬP"
+              )}
             </Button>
-          </InputGroup>
-
-          <Button type="submit" className="w-100" disabled={loading}>
-            {loading ? <Spinner size="sm" /> : "Đăng nhập Admin"}
-          </Button>
-        </Form>
+          </Form>
+        </Card.Body>
       </Card>
     </Container>
   );

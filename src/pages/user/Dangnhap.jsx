@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import {  Button,  Form,  Container,  Card,  InputGroup,  Spinner,  Row,Col
 } from "react-bootstrap";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useAuthContext } from "@/context/AuthContext";
 import { authApi } from "@/api";
 
@@ -11,28 +11,36 @@ const DERMIFY_PINK = "#e60d78";
 
 
 function Dangnhap() {
-  const { loginSuccess } = useAuthContext(); // Lấy hàm loginSuccess từ Context để cập nhật trạng thái đăng nhập
+  // Lấy location để biết người dùng đang ở trang nào trước khi bị chuyển đến trang đăng nhập
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const from = location.state?.from?.pathname || "/";
+
+  const { loginSuccess, user } = useAuthContext(); // Lấy hàm loginSuccess từ AuthContext để cập nhật trạng thái đăng nhập toàn cục
+  
   const [formData, setFormData] = useState({
     email: "",
     password: "",
-  });
+  }); 
 
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const navigate = useNavigate();
 
-  // UX: Nếu đã đăng nhập rồi thì không cho quay lại trang đăng nhập
+  // Nếu đã đăng nhập rồi thì không cho vào trang đăng nhập nữa, mà chuyển về trang chủ
   useEffect(() => {
-    const token = localStorage.getItem("accessToken");
-    if (token) {
-      navigate("/");
+    if (user) {
+      navigate("/", { replace: true });
     }
-  }, [navigate]);
+  }, [user, navigate]);
 
+  // Xác định trang người dùng muốn truy cập trước khi bị chuyển đến trang đăng nhập
   const handleChange = (e) => {
+
     const { name, value } = e.target;
+
     setFormData((prev) => ({
       ...prev,
       [name]: value,
@@ -40,6 +48,7 @@ function Dangnhap() {
     if (error) setError(""); 
   };
 
+  
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -58,30 +67,32 @@ function Dangnhap() {
         password: formData.password,
       };
 
-      
       const res = await authApi.login(loginPayload);
+      // Kiểm tra vai trò của user, nếu không phải customer thì không cho đăng nhập
+      if (res.user?.role !== "customer") {
+        setError("Tài khoản này không thuộc hệ thống người dùng");
+        return;
+      }
       // Lưu trữ thông tin (Sửa lại khớp với API trả về)
       localStorage.setItem("accessToken", res.accessToken);
       localStorage.setItem("refreshToken", res.refreshToken);
-      localStorage.setItem("role", res.role);
+      
       if (res.user) {
       localStorage.setItem("user", JSON.stringify(res.user));
       }
-      await loginSuccess(res.user);
-      const role = res.role;
-      // Điều hướng dựa trên vai trò
-      if (role === "customer") {
-        navigate("/");
-      } else {
-        navigate("/admin/dashboard");
-      }
-    
+
+      // update context
+      loginSuccess(res.user);
+
+      // redirect về trang trước
+      navigate(from, { replace: true });
+
     } catch (err) {
-      // Hiển thị lỗi chi tiết từ Server (ví dụ: "Tài khoản chưa xác thực")
-      setError(err?.response?.data?.message || err?.message || "Sai email hoặc mật khẩu");
+      setError(err?.message || "Sai email hoặc mật khẩu");
     } finally {
       setLoading(false);
     }
+
   };
 
   return (

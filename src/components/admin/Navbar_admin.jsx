@@ -8,7 +8,7 @@ export default function NavbarAdmin({ user, logout }) {
   const handleLogout = () => {
     logout();
     setOpenMenu(false);
-    navigate("/admin/login"); // 🔥 chuyển về login
+    navigate("/admin/login");
   };
 
   return (

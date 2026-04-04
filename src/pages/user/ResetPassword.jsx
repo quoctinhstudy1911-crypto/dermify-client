@@ -7,19 +7,24 @@ import { authApi } from "@/api";
 const DERMIFY_PINK = "#e60d78";
 
 function ResetPassword() {
+  // Lấy token từ query params
   const [params] = useSearchParams();
+  // Điều hướng sau khi đổi mật khẩu thành công
   const navigate = useNavigate();
-  
+  // State để quản lý form và thông báo
   const [formData, setFormData] = useState({
     password: "",
     confirmPassword: "",
   });
+  // State để quản lý loading và thông báo lỗi/thành công
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
-
+ // Lấy token từ URL
   const token = params.get("token");
 
+  // Xử lý submit form
   const handleSubmit = async (e) => {
+    // Ngăn chặn hành vi submit mặc định của form
     e.preventDefault();
     
     // 1. Kiểm tra token
@@ -40,6 +45,7 @@ function ResetPassword() {
     }
 
     try {
+      // 3. Gọi API đổi mật khẩu
       setLoading(true);
       setMessage({ type: "", text: "" });
 

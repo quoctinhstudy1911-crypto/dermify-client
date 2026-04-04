@@ -1,40 +1,28 @@
 import axiosClient from "./axiosClient";
 
 const categoryApi = {
-  /**
-   * Lấy toàn bộ danh mục dưới dạng cấu trúc Cây (Tree)
-   * Dùng để đổ vào Menu hoặc Sidebar lọc sản phẩm
-   */
+  
+  // LẤY CÂY DANH MỤC
   getCategoryTree: () => {
     return axiosClient.get("/categories");
   },
 
-  /**
-   * Lấy chi tiết 1 danh mục theo Slug
-   */
+  // LẤY DANH MỤC THEO SLUG (DÙNG CHO TRANG DANH MỤC SẢN PHẨM)
   getCategoryBySlug: (slug) => {
     return axiosClient.get(`/categories/${slug}`);
   },
 
-  /**
-   * Thêm mới danh mục (Admin)
-   * @param {Object} data { name, parentId, status }
-   */
+  // TẠO DANH MỤC MỚI (Admin)
   createCategory: (data) => {
     return axiosClient.post("/categories", data);
   },
 
-  /**
-   * Cập nhật danh mục (Admin)
-   */
+  // CẬP NHẬT DANH MỤC (Admin)
   updateCategory: (id, data) => {
     return axiosClient.put(`/categories/${id}`, data);
   },
 
-  /**
-   * Xóa danh mục
-   * Lưu ý: Backend có check HAS_CHILDREN và HAS_PRODUCTS
-   */
+  // XÓA DANH MỤC (Admin) (lưu ý: nếu danh mục có con thì sẽ không xóa được)
   deleteCategory: (id) => {
     return axiosClient.delete(`/categories/${id}`);
   },
