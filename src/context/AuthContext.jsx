@@ -24,6 +24,7 @@ export const AuthProvider = ({ children }) => {
     return !!localStorage.getItem("accessToken");
   };
 
+// fetch user info
 const fetchMe = async () => {
   if (!isLoggedIn()) {
     setUser(null);
@@ -32,35 +33,32 @@ const fetchMe = async () => {
   }
 
   try {
-    // 1. Lấy nhanh từ cache để hiện tên trên Navbar trước
     const cachedUser = localStorage.getItem("user");
     if (cachedUser && cachedUser !== "undefined") {
       setUser(JSON.parse(cachedUser));
     }
 
-    // 2. Chạy SONG SONG cả 2 API để tiết kiệm thời gian
-    // Một cái lấy Role (Account), một cái lấy Profile (Customer)
-    const [authRes, profileRes] = await Promise.all([
-      authApi.getMe(),
-      userApi.getProfile()
-    ]);
+    const authRes = await authApi.getMe();
 
-    // 3. GỘP DỮ LIỆU: Ưu tiên dữ liệu từ Profile, nhưng lấy Role từ Auth
+    // 🔥 QUAN TRỌNG: chặn admin
+    if (authRes.role !== "customer") {
+      setUser(null);
+      return;
+    }
+
+    const profileRes = await userApi.getProfile();
+
     const fullData = {
-      ...profileRes,      // Có name, phone, avatar, addresses...
-      role: authRes.role, // Lấy đúng cái role "customer" từ account
-      email: authRes.email // Lấy luôn email để hiện ở trang Profile
+      ...profileRes,
+      role: authRes.role,
+      email: authRes.email
     };
 
-    // 4. Cập nhật State và LocalStorage
     setUser(fullData);
     localStorage.setItem("user", JSON.stringify(fullData));
 
-    console.log("✅ Đã gộp Role và Profile thành công:", fullData);
-
   } catch (err) {
-    console.error("❌ Lỗi đồng bộ dữ liệu:", err);
-    // Nếu lỗi 401 thì logout (đã có interceptor lo nhưng viết ở đây cho chắc)
+    console.error("Lỗi đồng bộ dữ liệu:", err);
   } finally {
     setLoading(false);
   }
@@ -86,8 +84,13 @@ const fetchMe = async () => {
   // ======================
   // INIT APP
   // ======================
-  useEffect(() => {
+useEffect(() => {
     const init = async () => {
+      if (window.location.pathname.startsWith("/admin")) {
+        setLoading(false);
+        return;
+      }
+
       await fetchMe();
       await fetchCart();
       setLoading(false);

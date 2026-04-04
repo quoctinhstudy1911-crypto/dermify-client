@@ -17,6 +17,7 @@ import ProductList from "../pages/user/ProductList";
 import ProductDetail from "@/pages/user/ProductDetail";
 import Cart from "@/pages/user/Cart";
 import Checkout from "@/pages/user/Checkout";
+import OrderSuccess from "@/pages/user/OrderSuccess";
 
 // Kiểm tra nếu đã đăng nhập và có role là "customer" thì mới cho truy cập vào các route con của UserLayout
 const RequireUser = () => {
@@ -64,11 +65,14 @@ export default function UserRoutes() {
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/verify-email" element={<VerifyEmail />} />
 
+
       {/* ================= PRIVATE ROUTES ================= */}
       <Route element={<RequireUser />}>
         <Route element={<UserLayout />}>
           <Route path="/profile" element={<Profile />} />
           <Route path="/checkout" element={<Checkout />} />
+          <Route path="/order-success" element={<OrderSuccess />} />
+
         </Route>
       </Route>
     </>

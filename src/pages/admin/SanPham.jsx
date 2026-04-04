@@ -67,6 +67,7 @@ export default function SanPham() {
   const [totalItems, setTotalItems] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
 
+  console.log("CALL API:", { limit: ITEMS_PER_PAGE, page: currentPage });
   const formatPrice = (p) => {
     if (!p && p !== 0) return "0 VND";
     const nghin = Math.floor(Number(p) / 1000);
@@ -137,13 +138,13 @@ export default function SanPham() {
       }
 
       // 3. Dữ liệu sản phẩm (JSON)
-      const productData = {
-        name: form.name,
-        price: Number(form.price),
-        quantity: Number(form.quantity),
-        description: form.description,
-        images: finalImages,
-      };
+    const productData = {
+      name: form.name,
+      price: Number(form.price),
+      stock: Number(form.quantity),
+      description: form.description,
+      images: finalImages,
+    };
 
       if (editing) {
         await productApi.updateProduct(editing._id || editing.id, productData);
@@ -175,7 +176,7 @@ export default function SanPham() {
     setForm({
       name: product.name || "",
       price: product.price || "",
-      quantity: product.quantity || "",
+      quantity: product.stock || "",
       description: product.description || "",
       image: product.images?.[0] || product.image || "",
     });
@@ -247,7 +248,7 @@ export default function SanPham() {
                     <td className="text-danger fw-bold">
                       {formatPrice(p.price)}
                     </td>
-                    <td>{p.quantity}</td>
+                    <td>{p.stock}</td>
                     <td>
                       <Button
                         size="sm"

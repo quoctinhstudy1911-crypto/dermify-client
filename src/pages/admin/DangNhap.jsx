@@ -1,16 +1,15 @@
 import { useState } from "react";
-import { Button, Form, InputGroup, Spinner, Container, Card } from "react-bootstrap";
+import { Button, Form, InputGroup, Spinner, Container, Row, Col, Alert } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
-import { authApi } from "@/api";
+import { authApi, staffApi } from "@/api";
+import { useAdminAuth } from "@/context/AdminAuthContext";
+import { EnvelopeFill, LockFill, EyeFill, EyeSlashFill } from "react-bootstrap-icons"; 
+import "./DangNhap.css"; 
 
 export default function DangNhap() {
   const navigate = useNavigate();
-
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-  });
-
+  const { loginAdmin } = useAdminAuth();
+  const [formData, setFormData] = useState({ email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -21,125 +20,145 @@ export default function DangNhap() {
     if (error) setError("");
   };
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      setLoading(true);
+      setError("");
 
-  if (!formData.email || !formData.password) {
-    setError("Vui lòng nhập đầy đủ thông tin");
-    return;
-  }
-
-  try {
-    setLoading(true);
-    setError("");
-
-    const loginPayload = {
-      email: formData.email.trim().toLowerCase(),
-      password: formData.password,
-    };
-
-    const res = await authApi.login(loginPayload);
-
-    const { accessToken, refreshToken, user } = res;
-
-    // CHỈ CHO ADMIN LOGIN
-    if (!["admin", "super_admin"].includes(user?.role)) {
-      setError("Bạn không có quyền truy cập trang quản trị");
+      // --- BƯỚC QUAN TRỌNG: DỌN DẸP ---
+      // Xóa sạch token của User (khách) để tránh AuthContext của User tự động điều hướng về "/"
       localStorage.removeItem("accessToken");
       localStorage.removeItem("refreshToken");
       localStorage.removeItem("user");
-      return;
+      localStorage.removeItem("role");
+
+      // 1. Gọi API Login - Nhận res đã bóc 2 lớp
+      const res = await authApi.login({
+        email: formData.email.trim().toLowerCase(),
+        password: formData.password,
+      });
+
+      const { accessToken, refreshToken, role } = res;
+
+      // 2. Kiểm tra quyền Admin ngay tại đây
+      if (!["admin", "super_admin"].includes(role)) {
+        setError("Tài khoản không có quyền truy cập quản trị.");
+        setLoading(false);
+        return;
+      }
+
+      // 3. Lưu token với tiền tố admin_
+      localStorage.setItem("admin_accessToken", accessToken);
+      localStorage.setItem("admin_refreshToken", refreshToken);
+      localStorage.setItem("admin_role", role);
+
+      // Đợi một chút để LocalStorage ổn định
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      try {
+        // 4. Lấy thông tin nhân viên (Request này dùng admin_accessToken)
+        const staffInfo = await staffApi.getMe();
+        
+        // 5. Cập nhật Admin Context
+        loginAdmin(staffInfo, role);
+        
+        // 6. Điều hướng
+        console.log("Đăng nhập Admin thành công!");
+        navigate("/admin", { replace: true });
+
+      } catch (err) {
+        console.error("Lỗi xác thực staff:", err);
+        // Nếu lỗi getMe, xóa sạch để tránh treo session admin
+        localStorage.removeItem("admin_accessToken");
+        localStorage.removeItem("admin_refreshToken");
+        localStorage.removeItem("admin_role");
+        setError("Không thể lấy thông tin nhân viên. Vui lòng thử lại.");
+      }
+    } catch (err) {
+      setError(err?.message || "Email hoặc mật khẩu không đúng.");
+    } finally {
+      setLoading(false);
     }
+  };
 
-    // Lưu token
-    localStorage.setItem("accessToken", accessToken);
-    localStorage.setItem("refreshToken", refreshToken);
-
-    // Lưu user
-    if (user) {
-      localStorage.setItem("user", JSON.stringify(user));
-    }
-
-    // Redirect admin
-    navigate("/admin", { replace: true });
-
-  } catch (err) {
-    setError(err?.message || "Đăng nhập thất bại");
-  } finally {
-    setLoading(false);
-  }
-};
-
-return (
-    <Container className="d-flex justify-content-center align-items-center vh-100 bg-light">
-      <Card className="border-0 shadow-lg p-4" style={{ width: "100%", maxWidth: 400, borderRadius: "15px" }}>
-        <Card.Body>
-          <div className="text-center mb-4">
-            <h3 className="fw-bold text-primary">ADMIN PANEL</h3>
-            <p className="text-muted small">Vui lòng đăng nhập để tiếp tục</p>
+  return (
+    <Container fluid className="admin-login-container p-0">
+      <Row className="g-0 min-vh-100">
+        {/* PANEL TRÁI: BRANDING */}
+        <Col lg={7} className="d-none d-lg-flex left-panel align-items-center justify-content-center p-5 shadow-inset">
+          <div className="text-center brand-content animate-fade-in">
+            <div className="logo-box mb-4 mx-auto">D</div>
+            <h1 className="fw-extrabold brand-title text-white">DERMIFY</h1>
+            <p className="brand-subtitle text-white-50">Hệ Thống Quản Trị Chuyên Nghiệp</p>
           </div>
+        </Col>
 
-          {error && (
-            <div className="alert alert-danger py-2 small text-center border-0" role="alert">
-              {error}
+        {/* PANEL PHẢI: FORM */}
+        <Col lg={5} className="d-flex align-items-center justify-content-center p-4 p-md-5 right-panel bg-white">
+          <div className="login-form-wrapper w-100 animate-slide-up" style={{maxWidth: "400px"}}>
+            <div className="mb-5 text-center text-lg-start">
+              <h2 className="fw-bold text-dark mb-2">Quản Trị Viên</h2>
+              <p className="text-muted small">Vui lòng đăng nhập để quản lý hệ thống</p>
             </div>
-          )}
 
-          <Form onSubmit={handleSubmit}>
-            <Form.Group className="mb-3">
-              <Form.Label className="small fw-semibold">Email quản trị</Form.Label>
-              <Form.Control
-                type="email"
-                name="email"
-                placeholder="admin@example.com"
-                value={formData.email}
-                onChange={handleChange}
-                disabled={loading}
-                style={{ padding: "0.75rem" }}
-              />
-            </Form.Group>
+            {error && <Alert variant="danger" className="py-2 small border-0 mb-4 shadow-sm text-center">{error}</Alert>}
 
-            <Form.Group className="mb-4">
-              <Form.Label className="small fw-semibold">Mật khẩu</Form.Label>
-              <InputGroup>
-                <Form.Control
-                  type={showPassword ? "text" : "password"}
-                  name="password"
-                  placeholder="••••••••"
-                  value={formData.password}
-                  onChange={handleChange}
-                  disabled={loading}
-                  style={{ padding: "0.75rem", borderRight: "none" }}
-                />
-                <Button 
-                  variant="outline-secondary" 
-                  style={{ borderLeft: "none", background: "transparent", color: "#6c757d" }}
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? "👁️" : "🙈"}
-                </Button>
-              </InputGroup>
-            </Form.Group>
+            <Form onSubmit={handleSubmit}>
+              <Form.Group className="mb-3">
+                <Form.Label className="small fw-bold text-secondary">EMAIL HỆ THỐNG</Form.Label>
+                <InputGroup className="input-group-custom shadow-sm">
+                  <InputGroup.Text className="bg-white border-end-0">
+                    <EnvelopeFill className="text-muted" />
+                  </InputGroup.Text>
+                  <Form.Control 
+                    type="email" 
+                    name="email" 
+                    placeholder="admin@dermify.vn" 
+                    className="border-start-0 ps-0"
+                    value={formData.email} 
+                    onChange={handleChange} 
+                    required 
+                  />
+                </InputGroup>
+              </Form.Group>
 
-            <Button 
-              type="submit" 
-              variant="primary" 
-              className="w-100 py-2 fw-bold shadow-sm" 
-              disabled={loading}
-              style={{ borderRadius: "8px" }}
-            >
-              {loading ? (
-                <>
-                  <Spinner animation="border" size="sm" className="me-2" />
-                  Đang xử lý...
-                </>
-              ) : (
-                "ĐĂNG NHẬP"
-              )}
-            </Button>
-          </Form>
-        </Card.Body>
-      </Card>
+              <Form.Group className="mb-4">
+                <Form.Label className="small fw-bold text-secondary">MẬT KHẨU</Form.Label>
+                <InputGroup className="input-group-custom shadow-sm">
+                  <InputGroup.Text className="bg-white border-end-0">
+                    <LockFill className="text-muted" />
+                  </InputGroup.Text>
+                  <Form.Control 
+                    type={showPassword ? "text" : "password"} 
+                    name="password" 
+                    placeholder="••••••••"
+                    className="border-start-0 border-end-0 ps-0"
+                    value={formData.password} 
+                    onChange={handleChange} 
+                    required 
+                  />
+                  <Button variant="white" className="border-start-0" onClick={() => setShowPassword(!showPassword)}>
+                    {showPassword ? <EyeSlashFill className="text-muted" /> : <EyeFill className="text-muted" />}
+                  </Button>
+                </InputGroup>
+              </Form.Group>
+
+              <Button type="submit" variant="primary" className="w-100 py-3 fw-bold btn-login shadow" disabled={loading}>
+                {loading ? (
+                  <><Spinner animation="border" size="sm" className="me-2" /> ĐANG XÁC THỰC...</>
+                ) : (
+                  "VÀO HỆ THỐNG"
+                )}
+              </Button>
+            </Form>
+
+            <div className="text-center mt-5">
+              <a href="/" className="text-decoration-none small text-muted">← Quay lại trang chủ khách hàng</a>
+            </div>
+          </div>
+        </Col>
+      </Row>
     </Container>
   );
 }

@@ -24,6 +24,9 @@ const staffApi = {
   // Tạo tài khoản admin mới
   createAdmin: (data) =>
     axiosClient.post("/staff/create-admin", data),
+  
+  // Lấy thông tin nhân viên của chính mình
+  getMe: () => axiosClient.get("/staff/me"),
 };
 
 export default staffApi;

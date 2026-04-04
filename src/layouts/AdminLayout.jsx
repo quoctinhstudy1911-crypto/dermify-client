@@ -96,7 +96,7 @@ export default function AdminLayout() {
               color: "#78350f",
               lineHeight: "1.5",
             }}>
-              <strong>💡 Tip:</strong> Quản lý dữ liệu của bạn từ sidebar.
+              <strong>Lưu ý:</strong> Đây là khu vực quản trị. Vui lòng đảm bảo bạn có quyền truy cập trước khi thực hiện bất kỳ thay đổi nào.
             </div>
           </div>
         </aside>

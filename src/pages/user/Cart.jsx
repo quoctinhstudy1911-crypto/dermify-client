@@ -1,5 +1,4 @@
 import { Container, Table, Button, Image, Row, Col } from "react-bootstrap";
-import MyNavbar from "../../components/user/Navbar";
 import { useCart } from "@/context/CartContext";
 import cartApi from "@/api/cartApi";
 import { useNavigate } from "react-router-dom"; // ✅ 1. Phải import cái này
@@ -52,7 +51,6 @@ function Cart() {
 
   return (
     <>
-      <MyNavbar />
       <Container className="py-5">
         <div className="d-flex justify-content-between align-items-center mb-4">
           <h2 className="fw-bold">Giỏ hàng của bạn</h2>
