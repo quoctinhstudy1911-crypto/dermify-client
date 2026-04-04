@@ -1,6 +1,5 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import { cartApi } from "@/api";
-import authApi from "@/api/authApi";
+import { userApi,authApi,cartApi } from "@/api";
 
 const AuthContext = createContext();
 
@@ -25,40 +24,47 @@ export const AuthProvider = ({ children }) => {
     return !!localStorage.getItem("accessToken");
   };
 
-  // ======================
-  // GET USER (QUAN TRỌNG)
-  // ======================
-  const fetchMe = async () => {
-    if (!isLoggedIn()) {
-      setUser(null);
-      return;
+const fetchMe = async () => {
+  if (!isLoggedIn()) {
+    setUser(null);
+    setLoading(false);
+    return;
+  }
+
+  try {
+    // 1. Lấy nhanh từ cache để hiện tên trên Navbar trước
+    const cachedUser = localStorage.getItem("user");
+    if (cachedUser && cachedUser !== "undefined") {
+      setUser(JSON.parse(cachedUser));
     }
 
-    try {
-      // ưu tiên cache
-      const cachedUser = localStorage.getItem("user");
+    // 2. Chạy SONG SONG cả 2 API để tiết kiệm thời gian
+    // Một cái lấy Role (Account), một cái lấy Profile (Customer)
+    const [authRes, profileRes] = await Promise.all([
+      authApi.getMe(),
+      userApi.getProfile()
+    ]);
 
-      if (cachedUser && cachedUser !== "undefined") {
-        const parsed = JSON.parse(cachedUser);
-        setUser(parsed);
-        return;
-      }
+    // 3. GỘP DỮ LIỆU: Ưu tiên dữ liệu từ Profile, nhưng lấy Role từ Auth
+    const fullData = {
+      ...profileRes,      // Có name, phone, avatar, addresses...
+      role: authRes.role, // Lấy đúng cái role "customer" từ account
+      email: authRes.email // Lấy luôn email để hiện ở trang Profile
+    };
 
-      // gọi API đúng
-      const res = await authApi.getMe();
+    // 4. Cập nhật State và LocalStorage
+    setUser(fullData);
+    localStorage.setItem("user", JSON.stringify(fullData));
 
-      setUser(res);
-      localStorage.setItem("user", JSON.stringify(res));
-    } catch (err) {
-      console.log("AUTH ERROR:", err);
+    console.log("✅ Đã gộp Role và Profile thành công:", fullData);
 
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("refreshToken");
-      localStorage.removeItem("user");
-
-      setUser(null);
-    }
-  };
+  } catch (err) {
+    console.error("❌ Lỗi đồng bộ dữ liệu:", err);
+    // Nếu lỗi 401 thì logout (đã có interceptor lo nhưng viết ở đây cho chắc)
+  } finally {
+    setLoading(false);
+  }
+};
 
   // ======================
   // GET CART

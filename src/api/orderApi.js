@@ -5,28 +5,16 @@ const orderApi = {
   // 1. DÀNH CHO KHÁCH HÀNG (CUSTOMER)
   // ==========================================
   customer: {
-    /**
-     * Tạo đơn hàng mới từ giỏ hàng
-     * @param {Object} data - { shippingAddress, paymentMethod, note }
-     */
+  // Tạo đơn hàng mới
     createOrder: (data) => axiosClient.post("/orders", data),
 
-    /**
-     * Lấy danh sách đơn hàng cá nhân (có phân trang & filter)
-     * @param {Object} params - { page, limit, status }
-     */
+  // Lấy danh sách đơn hàng của khách hàng hiện tại
     getMyOrders: (params) => axiosClient.get("/orders", { params }),
 
-    /**
-     * Xem chi tiết đơn hàng theo ID
-     */
+  // Lấy chi tiết đơn hàng 
     getOrderDetail: (orderId) => axiosClient.get(`/orders/${orderId}`),
 
-    /**
-     * Khách hàng yêu cầu hủy đơn
-     * @param {string} orderId 
-     * @param {Object} data - { reason: "Lý do hủy" }
-     */
+  // Hủy đơn hàng (nếu chưa được xác nhận)
     cancelOrder: (orderId, data) => 
       axiosClient.put(`/orders/${orderId}/cancel`, data),
   },
@@ -35,32 +23,18 @@ const orderApi = {
   // 2. DÀNH CHO QUẢN TRỊ VIÊN (ADMIN/STAFF)
   // ==========================================
   admin: {
-    /**
-     * Lấy tất cả đơn hàng toàn hệ thống
-     * @param {Object} params - { page, limit, status, paymentStatus, search, fromDate, toDate }
-     */
+    // Lấy danh sách tất cả đơn hàng với phân trang, lọc theo trạng thái, ngày tháng
     getAllOrders: (params) => axiosClient.get("/orders/admin/orders", { params }),
 
-    /**
-     * Cập nhật trạng thái đơn hàng (Confirmed, Shipping, Delivered, Cancelled)
-     * @param {string} orderId 
-     * @param {Object} data - { status: "delivered" }
-     */
+    // Lấy chi tiết đơn hàng (bao gồm thông tin khách hàng, sản phẩm, lịch sử trạng thái)
     updateStatus: (orderId, data) => 
       axiosClient.put(`/orders/admin/orders/${orderId}/status`, data),
 
-    /**
-     * Cập nhật trạng thái thanh toán và thông tin giao dịch
-     * @param {string} orderId 
-     * @param {Object} data - { paymentStatus, transactionId, bankCode, payDate }
-     */
+    // Cập nhật thông tin thanh toán của đơn hàng (ví dụ: đã thanh toán, phương thức thanh toán)
     updatePayment: (orderId, data) => 
       axiosClient.put(`/orders/admin/orders/${orderId}/payment`, data),
-
-    /**
-     * Lấy dữ liệu thống kê doanh thu, đơn hàng
-     * @param {Object} params - { startDate, endDate } (định dạng YYYY-MM-DD)
-     */
+    
+    // Thống kê doanh thu, số lượng đơn hàng theo ngày, tháng, năm
     getStatistics: (params) => axiosClient.get("/orders/admin/orders/statistics", { params }),
   },
 };

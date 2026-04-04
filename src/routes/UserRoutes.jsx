@@ -7,24 +7,25 @@ import Profile from "../pages/user/Profile";
 import VerifyEmail from "../pages/user/VerifyEmail";
 import ForgotPassword from "../pages/user/ForgotPassword";
 import ResetPassword from "../pages/user/ResetPassword";
+import { useAuthContext } from "@/context/AuthContext";
+const TempOrders = () => <div className="p-5">Trang Đơn hàng đang phát triển...</div>;
 
 // Component bảo vệ route dành cho user
-import { useAuthContext } from "@/context/AuthContext";
-
 const RequireUser = ({ children }) => {
   const { user, loading } = useAuthContext();
 
-  // Nếu đang load (kiểm tra token, lấy thông tin user...) thì không render gì cả (hoặc có thể render spinner)
-  if (loading) return null;
+  // ĐANG LOAD THÌ ĐỨNG YÊN, ĐỪNG CHUYỂN TRANG
+  if (loading) {
+    return <div className="text-center mt-5">Đang xác thực...</div>;
+  }
 
-  // Nếu không có user nào (chưa đăng nhập) thì chuyển về trang đăng nhập
   if (!user) {
     return <Navigate to="/dangnhap" />;
   }
 
-  // Nếu user có role khác "customer" (ví dụ admin) thì chuyển về trang admin
-  if (user.role !== "customer") {
-    return <Navigate to="/admin" />;
+  // Kiểm tra role cẩn thận (tránh lỗi chữ hoa/thường)
+  if (user.role?.toLowerCase() !== "customer") {
+    return <Navigate to="/" />;
   }
 
   return children;
@@ -52,6 +53,7 @@ export default function UserRoutes() {
           </RequireUser>
         }
       >
+        <Route path="/orders" element={<TempOrders />} />
         <Route path="/profile" element={<Profile />} />
       </Route>
     </>

@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Container, Card, Form, Button, Row, Col } from "react-bootstrap";
-import { authApi } from "@/api";
 import { Link } from "react-router-dom";
+import { authApi } from "@/api";
 
-// Màu chủ đạo Dermify
+// Màu sắc chủ đạo của Dermify
 const DERMIFY_PINK = "#e60d78";
 
 function ForgotPassword() {
@@ -12,7 +12,8 @@ function ForgotPassword() {
   const [message, setMessage] = useState({ type: "", text: "" });
 
   const handleSubmit = async (e) => {
-    e.preventDefault(); // Ngăn trang reload
+    // Ngăn chặn hành vi submit mặc định của form
+    e.preventDefault();
     if (!email.endsWith("@gmail.com")) {
       setMessage({ type: "danger", text: "Vui lòng nhập đúng định dạng Gmail" });
       return;
@@ -25,13 +26,13 @@ function ForgotPassword() {
       await authApi.forgotPassword(email);
       
       setMessage({ 
-        type: "success", 
-        text: "🎯 Một liên kết đặt lại mật khẩu đã được gửi đến email của bạn!" 
-      });
+          type: "success", 
+          text: "Nếu email tồn tại, chúng tôi đã gửi hướng dẫn đặt lại mật khẩu." 
+        });
     } catch (err) {
-      setMessage({ 
-        type: "danger", 
-        text: err?.response?.data?.message || "Không thể gửi email lúc này" 
+       setMessage({ 
+          type: "danger", 
+          text: "Không thể gửi yêu cầu lúc này. Vui lòng thử lại." 
       });
     } finally {
       setLoading(false);
