@@ -131,9 +131,12 @@ export default function SanPham() {
 
       // 2. Tận dụng uploadApi khi chọn file mới
       if (imageFile) {
-        const uploadRes = await uploadApi.uploadImages([imageFile]);
-        if (uploadRes && uploadRes.length > 0) {
-          finalImages = uploadRes;
+        // Truyền trực tiếp imageFile (đối tượng File)
+        const uploadRes = await uploadApi.uploadImages(imageFile); 
+
+        // Vì axiosClient đã bóc lớp 'data', nên uploadRes sẽ là mảng URL: ["http://..."]
+        if (Array.isArray(uploadRes) && uploadRes.length > 0) {
+          finalImages = uploadRes; 
         }
       }
 
