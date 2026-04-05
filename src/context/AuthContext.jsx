@@ -26,43 +26,41 @@ export const AuthProvider = ({ children }) => {
 
 // fetch user info
 const fetchMe = async () => {
-  if (!isLoggedIn()) {
-    setUser(null);
-    setLoading(false);
-    return;
-  }
-
-  try {
-    const cachedUser = localStorage.getItem("user");
-    if (cachedUser && cachedUser !== "undefined") {
-      setUser(JSON.parse(cachedUser));
-    }
-
-    const authRes = await authApi.getMe();
-
-    // 🔥 QUAN TRỌNG: chặn admin
-    if (authRes.role !== "customer") {
+    if (!isLoggedIn()) {
       setUser(null);
+      setLoading(false);
       return;
     }
 
-    const profileRes = await userApi.getProfile();
+    try {
+      // 1. Lấy dữ liệu tạm từ máy để hiện giao diện nhanh (UX)
+      const cachedUser = localStorage.getItem("user");
+      if (cachedUser && cachedUser !== "undefined") {
+        setUser(JSON.parse(cachedUser));
+      }
 
-    const fullData = {
-      ...profileRes,
-      role: authRes.role,
-      email: authRes.email
-    };
+      // 2. Gọi API kiểm tra thực tế
+      const authRes = await authApi.getMe();
 
-    setUser(fullData);
-    localStorage.setItem("user", JSON.stringify(fullData));
+      // Nếu là Admin thì không cho login vào trang User
+      if (authRes.role !== "customer") {
+        logout(); // Gọi hàm logout ở trên để xóa sạch token rác
+        return;
+      }
 
-  } catch (err) {
-    console.error("Lỗi đồng bộ dữ liệu:", err);
-  } finally {
-    setLoading(false);
-  }
-};
+      const profileRes = await userApi.getProfile();
+      const fullData = { ...profileRes, role: authRes.role, email: authRes.email };
+
+      setUser(fullData);
+      localStorage.setItem("user", JSON.stringify(fullData));
+    } catch (err) {
+      console.error("Phiên đăng nhập hết hạn hoặc lỗi hệ thống:", err);
+      // Nếu lỗi (thường là 401), dọn dẹp luôn để không bị trạng thái "đăng nhập ảo"
+      logout(); 
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // ======================
   // GET CART
@@ -86,14 +84,18 @@ const fetchMe = async () => {
   // ======================
 useEffect(() => {
     const init = async () => {
+      // Nếu là trang admin thì nghỉ khỏe cho AdminAuthContext làm việc
       if (window.location.pathname.startsWith("/admin")) {
         setLoading(false);
         return;
       }
 
-      await fetchMe();
-      await fetchCart();
-      setLoading(false);
+      // Chỉ fetch khi thực sự có token trong máy
+      if (isLoggedIn()) {
+        await Promise.all([fetchMe(), fetchCart()]);
+      } else {
+        setLoading(false);
+      }
     };
 
     init();
@@ -111,7 +113,11 @@ useEffect(() => {
   // LOGOUT
   // ======================
   const logout = () => {
-    localStorage.clear();
+    // Chỉ xóa những key của User khách hàng
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    localStorage.removeItem("user");
+    // Nếu có key role chung thì xóa, còn không thì thôi
     setUser(null);
     setCartCount(0);
   };
