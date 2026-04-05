@@ -32,6 +32,9 @@ function Profile() {
   const [addressForm, setAddressForm] = useState({
     fullName: "", phone: "", street: "", ward: "", district: "", city: "", isDefault: false,
   });
+  
+  // LOG CHI TIẾT JSON Ở ĐÂY
+  console.log("Full User JSON từ Context:", JSON.stringify(user, null, 2));
 
   // ================= PREVIEW CLEAN =================
   useEffect(() => {

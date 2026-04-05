@@ -1,145 +1,171 @@
-import React from "react";
-import { useAuthContext } from "../../context/AuthContext";
+import React, { useEffect, useState } from "react";
+import { useAdminAuth } from "../../context/AdminAuthContext";
+import { Spinner, Card, Row, Col, ProgressBar, Badge } from "react-bootstrap";
+import orderApi from "@/api/orderApi";
 
 export default function AdminDashboard() {
-  const { user, loading } = useAuthContext();
+  const { admin, loading } = useAdminAuth();
+  const [stats, setStats] = useState(null);
+  const [loadingStats, setLoadingStats] = useState(true);
 
-  if (loading) {
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        setLoadingStats(true);
+        const res = await orderApi.admin.getStatistics();
+        setStats(res);
+      } catch (err) {
+        console.error("Lỗi dashboard:", err);
+      } finally {
+        setLoadingStats(false);
+      }
+    };
+    fetchStats();
+  }, []);
+
+  if (loading || loadingStats) {
     return (
-      <div className="text-center mt-5">
-        <div className="spinner-border text-primary" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </div>
-        <p className="mt-3 text-muted">Đang tải dữ liệu...</p>
+      <div className="d-flex flex-column justify-content-center align-items-center" style={{ height: "80vh" }}>
+        <Spinner animation="border" variant="primary" />
+        <p className="mt-3 text-secondary fw-medium">Đang khởi tạo dữ liệu...</p>
       </div>
     );
   }
 
-  // Chưa login
-  if (!user) {
+  if (!admin) {
     return (
-      <div className="text-center" style={{ paddingTop: "60px" }}>
-        <div style={{
-          fontSize: "64px",
-          marginBottom: "20px",
-        }}>
-          👋
-        </div>
-        <h2 className="fw-bold mb-3">Chào mừng đến Dashboard Admin</h2>
-        <p className="text-muted mb-5" style={{ fontSize: "16px" }}>
-          Vui lòng đăng nhập để truy cập các chức năng quản lý
-        </p>
-        <button
-          onClick={() => {
-            // Mở modal login bằng custom event
-            window.dispatchEvent(new Event('openAdminLoginModal'));
-          }}
-          className="btn btn-primary btn-lg"
-          style={{
-            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-            border: "none",
-            borderRadius: "8px",
-            padding: "12px 32px",
-            fontSize: "16px",
-          }}
-        >
-          🔐 Đăng nhập ngay
-        </button>
+      <div className="text-center mt-5 p-5 bg-light rounded-3 mx-4">
+        <h3 className="text-danger">⚠️ Truy cập bị từ chối</h3>
+        <p>Vui lòng đăng nhập với quyền Admin để xem nội dung này.</p>
       </div>
     );
   }
 
-  // Đã login
-  const stats = [
-    { label: "Tổng sản phẩm", value: "0", icon: "📦", color: "#3b82f6" },
-    { label: "Tổng đơn hàng", value: "0", icon: "🛒", color: "#10b981" },
-    { label: "Tổng người dùng", value: "0", icon: "👥", color: "#f59e0b" },
-    { label: "Doanh thu", value: "$0", icon: "💰", color: "#ef4444" },
+  const overview = stats?.overview || {};
+
+  const statCards = [
+    { label: "Tổng đơn hàng", value: overview.totalOrders || 0, icon: "bi-cart-check", color: "#10b981", bg: "#ecfdf5" },
+    { label: "Doanh thu", value: (overview.totalRevenue || 0).toLocaleString() + "đ", icon: "bi-currency-dollar", color: "#ef4444", bg: "#fef2f2" },
+    { label: "Khách hàng", value: overview.totalCustomers || 0, icon: "bi-people", color: "#f59e0b", bg: "#fffbeb" },
+    { label: "Giá trị TB", value: (overview.averageOrderValue || 0).toLocaleString() + "đ", icon: "bi-graph-up-arrow", color: "#3b82f6", bg: "#eff6ff" },
   ];
 
   return (
-    <div className="p-0">
-      {/* Header */}
-      <div className="mb-5">
-        <h1 className="fw-bold mb-1">Dashboard</h1>
-        <p className="text-muted">Chào mừng, <strong>{user.name || user.email}</strong></p>
+    <div className="p-4" style={{ backgroundColor: "#f8f9fa", minHeight: "100vh" }}>
+      {/* HEADER */}
+      <div className="mb-4 d-flex justify-content-between align-items-end">
+        <div>
+          <h2 className="fw-bold mb-1 text-dark">Bảng điều khiển</h2>
+          <p className="text-muted mb-0">
+            Chào mừng trở lại, <span className="text-primary fw-semibold">{admin.name || admin.email}</span>
+          </p>
+        </div>
+        <div className="text-muted small">Cập nhật cuối: {new Date().toLocaleTimeString()}</div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="row g-3 mb-5">
-        {stats.map((stat, idx) => (
-          <div key={idx} className="col-12 col-md-6 col-lg-3">
-            <div className="card border-0 shadow-sm h-100" style={{
-              borderTop: `4px solid ${stat.color}`,
-              borderRadius: "12px",
-              transition: "transform 0.2s, box-shadow 0.2s",
-              cursor: "pointer",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "translateY(-5px)";
-              e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.1)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "translateY(0)";
-              e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.1)";
-            }}
-            >
-              <div className="card-body">
-                <div style={{ fontSize: "32px", marginBottom: "10px" }}>{stat.icon}</div>
-                <h6 className="card-title text-muted mb-2" style={{ fontSize: "13px" }}>
-                  {stat.label}
-                </h6>
-                <h3 className="fw-bold mb-0" style={{ color: stat.color }}>
-                  {stat.value}
-                </h3>
-              </div>
-            </div>
-          </div>
+      {/* STATS CARDS */}
+      <Row className="g-4 mb-4">
+        {statCards.map((stat, idx) => (
+          <Col md={6} lg={3} key={idx}>
+            <Card className="h-100 border-0 shadow-sm transition-hover" style={{ borderRadius: "15px" }}>
+              <Card.Body className="p-4">
+                <div className="d-flex align-items-center mb-3">
+                  <div 
+                    className="rounded-circle d-flex align-items-center justify-content-center" 
+                    style={{ width: "48px", height: "48px", backgroundColor: stat.bg, color: stat.color, fontSize: "1.2rem" }}
+                  >
+                    {/* Sử dụng Icon từ Bootstrap Icons hoặc giữ nguyên Emoji của bạn */}
+                    <span role="img" aria-label={stat.label}>{stat.icon.startsWith('bi-') ? <i className={`bi ${stat.icon}`}></i> : stat.icon}</span>
+                  </div>
+                </div>
+                <div className="text-muted small fw-medium uppercase mb-1">{stat.label}</div>
+                <h3 className="fw-bold mb-0" style={{ color: "#1e293b" }}>{stat.value}</h3>
+              </Card.Body>
+            </Card>
+          </Col>
         ))}
-      </div>
+      </Row>
 
-      {/* Recent Activity */}
-      <div className="card border-0 shadow-sm mb-4" style={{ borderRadius: "12px" }}>
-        <div className="card-header border-bottom bg-light" style={{ borderRadius: "12px 12px 0 0" }}>
-          <h5 className="mb-0 fw-bold">📊 Hoạt động gần đây</h5>
-        </div>
-        <div className="card-body">
-          <div className="alert alert-light text-center mb-0">
-            <p className="mb-0 text-muted">Chưa có dữ liệu hoạt động</p>
-          </div>
-        </div>
-      </div>
+      <Row className="g-4">
+        {/* ORDER STATUS */}
+        <Col lg={5}>
+          <Card className="h-100 border-0 shadow-sm" style={{ borderRadius: "15px" }}>
+            <Card.Header className="bg-white border-0 pt-4 px-4 fw-bold d-flex align-items-center">
+              <span className="me-2">📦</span> Trạng thái đơn hàng
+            </Card.Header>
+            <Card.Body className="p-4">
+              {stats?.byStatus?.length ? (
+                stats.byStatus.map((s) => (
+                  <div key={s._id} className="mb-4">
+                    <div className="d-flex justify-content-between mb-1">
+                      <span className="fw-medium text-secondary">{s._id}</span>
+                      <Badge bg="light" text="dark" className="border">{s.count} đơn</Badge>
+                    </div>
+                    <ProgressBar 
+                       now={(s.count / (overview.totalOrders || 1)) * 100} 
+                       variant="primary" 
+                       style={{ height: "8px" }} 
+                    />
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-5 text-muted">Không có dữ liệu đơn hàng</div>
+              )}
+            </Card.Body>
+          </Card>
+        </Col>
 
-      {/* Quick Links */}
-      <div className="card border-0 shadow-sm" style={{ borderRadius: "12px" }}>
-        <div className="card-header border-bottom bg-light" style={{ borderRadius: "12px 12px 0 0" }}>
-          <h5 className="mb-0 fw-bold">⚙️ Quản lý nhanh</h5>
-        </div>
-        <div className="card-body">
-          <div className="row g-2">
-            <div className="col-12 col-md-6">
-              <a href="/admin/products" className="btn btn-outline-primary w-100 text-start">
-                📦 Quản lý sản phẩm
-              </a>
-            </div>
-            <div className="col-12 col-md-6">
-              <a href="/admin/orders" className="btn btn-outline-success w-100 text-start">
-                🛒 Quản lý đơn hàng
-              </a>
-            </div>
-            <div className="col-12 col-md-6">
-              <a href="/admin/users" className="btn btn-outline-warning w-100 text-start">
-                👥 Quản lý người dùng
-              </a>
-            </div>
-            <div className="col-12 col-md-6">
-              <a href="/admin/settings" className="btn btn-outline-secondary w-100 text-start">
-                ⚙️ Cài đặt hệ thống
-              </a>
-            </div>
-          </div>
-        </div>
-      </div>
+        {/* TOP PRODUCTS */}
+        <Col lg={7}>
+          <Card className="h-100 border-0 shadow-sm" style={{ borderRadius: "15px" }}>
+            <Card.Header className="bg-white border-0 pt-4 px-4 fw-bold d-flex align-items-center">
+              <span className="me-2">🔥</span> Sản phẩm bán chạy
+            </Card.Header>
+            <Card.Body className="p-4">
+              {stats?.topProducts?.length ? (
+                <div className="table-responsive">
+                  <table className="table table-hover align-middle">
+                    <thead className="table-light">
+                      <tr>
+                        <th className="border-0 small text-muted">TÊN SẢN PHẨM</th>
+                        <th className="border-0 small text-muted text-end">SỐ LƯỢNG</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {stats.topProducts.map((p) => (
+                        <tr key={p.productId}>
+                          <td className="fw-medium border-0">{p.name}</td>
+                          <td className="text-end border-0">
+                            <Badge pill bg="success" className="px-3">
+                              {p.totalSold} đã bán
+                            </Badge>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-5 text-muted">Chưa có dữ liệu sản phẩm</div>
+              )}
+            </Card.Body>
+          </Card>
+        </Col>
+      </Row>
+
+      {/* Thêm chút CSS nhẹ nhàng */}
+      <style>{`
+        .transition-hover {
+          transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .transition-hover:hover {
+          transform: translateY(-5px);
+          box-shadow: 0 10px 20px rgba(0,0,0,0.08) !important;
+        }
+        .progress-bar {
+          border-radius: 4px;
+        }
+      `}</style>
     </div>
   );
 }

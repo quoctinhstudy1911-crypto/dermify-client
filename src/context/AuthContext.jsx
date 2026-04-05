@@ -1,6 +1,5 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import { cartApi } from "@/api";
-import authApi from "@/api/authApi";
+import { userApi,authApi,cartApi } from "@/api";
 
 const AuthContext = createContext();
 
@@ -25,40 +24,45 @@ export const AuthProvider = ({ children }) => {
     return !!localStorage.getItem("accessToken");
   };
 
-  // ======================
-  // GET USER (QUAN TRỌNG)
-  // ======================
-  const fetchMe = async () => {
-    if (!isLoggedIn()) {
+// fetch user info
+const fetchMe = async () => {
+  if (!isLoggedIn()) {
+    setUser(null);
+    setLoading(false);
+    return;
+  }
+
+  try {
+    const cachedUser = localStorage.getItem("user");
+    if (cachedUser && cachedUser !== "undefined") {
+      setUser(JSON.parse(cachedUser));
+    }
+
+    const authRes = await authApi.getMe();
+
+    // 🔥 QUAN TRỌNG: chặn admin
+    if (authRes.role !== "customer") {
       setUser(null);
       return;
     }
 
-    try {
-      // ưu tiên cache
-      const cachedUser = localStorage.getItem("user");
+    const profileRes = await userApi.getProfile();
 
-      if (cachedUser && cachedUser !== "undefined") {
-        const parsed = JSON.parse(cachedUser);
-        setUser(parsed);
-        return;
-      }
+    const fullData = {
+      ...profileRes,
+      role: authRes.role,
+      email: authRes.email
+    };
 
-      // gọi API đúng
-      const res = await authApi.getMe();
+    setUser(fullData);
+    localStorage.setItem("user", JSON.stringify(fullData));
 
-      setUser(res);
-      localStorage.setItem("user", JSON.stringify(res));
-    } catch (err) {
-      console.log("AUTH ERROR:", err);
-
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("refreshToken");
-      localStorage.removeItem("user");
-
-      setUser(null);
-    }
-  };
+  } catch (err) {
+    console.error("Lỗi đồng bộ dữ liệu:", err);
+  } finally {
+    setLoading(false);
+  }
+};
 
   // ======================
   // GET CART
@@ -80,8 +84,13 @@ export const AuthProvider = ({ children }) => {
   // ======================
   // INIT APP
   // ======================
-  useEffect(() => {
+useEffect(() => {
     const init = async () => {
+      if (window.location.pathname.startsWith("/admin")) {
+        setLoading(false);
+        return;
+      }
+
       await fetchMe();
       await fetchCart();
       setLoading(false);

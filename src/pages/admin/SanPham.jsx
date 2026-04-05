@@ -3,50 +3,123 @@ import { Modal, Button, Form, Table, Spinner, Card } from "react-bootstrap";
 import productApi from "@/api/productApi";
 import uploadApi from "@/api/uploadApi";
 
+const INITIAL_FORM = { name: "", price: "", quantity: "", description: "", image: "" };
+const ITEMS_PER_PAGE = 10;
+
+// Component Phân trang
+const Pagination = ({ currentPage, totalPages, totalItems, onPageChange }) => {
+  if (totalPages <= 1) return null;
+
+  const pages = Array.from({ length: totalPages }, (_, i) => i + 1)
+    .filter(p => p === 1 || p === totalPages || (p >= currentPage - 1 && p <= currentPage + 1));
+
+  return (
+    <div className="d-flex justify-content-center align-items-center gap-2 mt-4 flex-wrap">
+      <Button 
+        variant="outline-secondary" 
+        size="sm" 
+        disabled={currentPage === 1} 
+        onClick={() => onPageChange(currentPage - 1)}
+      >
+        ← Trước
+      </Button>
+
+      <div className="d-flex gap-1 flex-wrap">
+        {pages.map((page, i) => (
+          <div key={page}>
+            {i > 0 && pages[i - 1] !== page - 1 && <span className="px-2">...</span>}
+            <Button
+              variant={currentPage === page ? "primary" : "outline-secondary"}
+              size="sm"
+              onClick={() => onPageChange(page)}
+            >
+              {page}
+            </Button>
+          </div>
+        ))}
+      </div>
+
+      <Button
+        variant="outline-secondary"
+        size="sm"
+        disabled={currentPage === totalPages}
+        onClick={() => onPageChange(currentPage + 1)}
+      >
+        Sau →
+      </Button>
+
+      <span className="ms-3 text-muted small">
+        Trang {currentPage}/{totalPages} ({totalItems} sản phẩm)
+      </span>
+    </div>
+  );
+};
+
 export default function SanPham() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [show, setShow] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState({
-    name: "",
-    price: "",
-    quantity: "",
-    description: "",
-    image: "",
-  });
+  const [form, setForm] = useState(INITIAL_FORM);
   const [imageFile, setImageFile] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
 
+  console.log("CALL API:", { limit: ITEMS_PER_PAGE, page: currentPage });
   const formatPrice = (p) => {
     if (!p && p !== 0) return "0 VND";
     const nghin = Math.floor(Number(p) / 1000);
     return `${nghin.toLocaleString("vi-VN")}.000 VND`;
   };
 
-  const getInitialForm = () => ({
-    name: "",
-    price: "",
-    quantity: "",
-    description: "",
-    image: "",
-  });
-
-  const fetchData = async () => {
+  const fetchData = async (page = 1) => {
     setLoading(true);
     try {
-      const res = await productApi.getProducts({ limit: 100, page: 1 });
-      // axiosClient interceptor trả response.data.data || response.data
-      // Với backend có thể trả { products: [] } hoặc [{...}]
-      const normalized = Array.isArray(res)
-        ? res
-        : res?.products || res?.data?.products || [];
-      setProducts(normalized);
+      const res = await productApi.getProducts({ limit: ITEMS_PER_PAGE, page });
+      
+      // Xử lý response từ API
+      let data = Array.isArray(res) ? res : res?.products || res?.data?.products || [];
+      
+      setProducts(data);
+      setCurrentPage(page);
+
+      // Xác định total pages
+      if (res?.totalPages && res?.totalItems) {
+        // Backend trả totalPages và totalItems
+        setTotalPages(res.totalPages);
+        setTotalItems(res.totalItems);
+      } else if (totalCount > 0) {
+        // Dùng totalCount từ init
+        const pages = Math.ceil(totalCount / ITEMS_PER_PAGE);
+        setTotalPages(pages);
+        setTotalItems(totalCount);
+      } else {
+        // Fallback: giả định dựa trên độ dài dữ liệu
+        const hasMoreData = data.length === ITEMS_PER_PAGE;
+        const pages = hasMoreData ? page + 1 : page;
+        setTotalPages(pages);
+        setTotalItems(data.length > 0 ? page * ITEMS_PER_PAGE : 0);
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchData(); }, []);
+  // Init: fetch total items
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await productApi.getProducts({ limit: 1, page: 1 });
+        const total = res?.totalItems || res?.total || (Array.isArray(res) ? 1 : 0);
+        if (total > 0) setTotalCount(total);
+      } catch (err) {
+        console.log("Get total items failed:", err.message);
+      }
+      fetchData(1);
+    })();
+  }, []);
 
   const save = async (e) => {
     e.preventDefault();
@@ -65,13 +138,13 @@ export default function SanPham() {
       }
 
       // 3. Dữ liệu sản phẩm (JSON)
-      const productData = {
-        name: form.name,
-        price: Number(form.price),
-        quantity: Number(form.quantity),
-        description: form.description,
-        images: finalImages,
-      };
+    const productData = {
+      name: form.name,
+      price: Number(form.price),
+      stock: Number(form.quantity),
+      description: form.description,
+      images: finalImages,
+    };
 
       if (editing) {
         await productApi.updateProduct(editing._id || editing.id, productData);
@@ -79,10 +152,10 @@ export default function SanPham() {
         await productApi.createProduct(productData);
       }
 
-      fetchData();
+      fetchData(1);
       setShow(false);
       setEditing(null);
-      setForm({ name: "", price: "", quantity: "", description: "", image: "" });
+      setForm(INITIAL_FORM);
       setImageFile(null);
       alert("Lưu sản phẩm thành công!");
     } catch (error) {
@@ -95,16 +168,42 @@ export default function SanPham() {
   const remove = async (id) => {
     if (!window.confirm("Xóa sản phẩm?")) return;
     await productApi.deleteProduct(id);
-    fetchData();
+    fetchData(currentPage);
   };
+
+  const handleEdit = (product) => {
+    setEditing(product);
+    setForm({
+      name: product.name || "",
+      price: product.price || "",
+      quantity: product.stock || "",
+      description: product.description || "",
+      image: product.images?.[0] || product.image || "",
+    });
+    setImageFile(null);
+    setShow(true);
+  };
+
+  const renderFormInput = (field, type = "text", placeholder = "") => (
+    <Form.Control
+      key={field}
+      className="mb-2"
+      type={field === "description" ? undefined : type}
+      as={field === "description" ? "textarea" : undefined}
+      rows={field === "description" ? 3 : undefined}
+      placeholder={placeholder}
+      value={form[field] || ""}
+      onChange={(e) => setForm({ ...form, [field]: e.target.value })}
+    />
+  );
 
   return (
     <div className="p-4">
       <Card className="shadow-sm border-0">
         <Card.Body>
           <div className="d-flex justify-content-between mb-3">
-            <h5 className="fw-bold">Quản lý sản phẩm ({products.length})</h5>
-            <Button onClick={() => { setForm(getInitialForm()); setEditing(null); setImageFile(null); setShow(true); }}>
+            <h5 className="fw-bold">Quản lý sản phẩm ({totalItems})</h5>
+            <Button onClick={() => { setForm(INITIAL_FORM); setEditing(null); setImageFile(null); setShow(true); }}>
               + Thêm
             </Button>
           </div>
@@ -149,24 +248,13 @@ export default function SanPham() {
                     <td className="text-danger fw-bold">
                       {formatPrice(p.price)}
                     </td>
-                    <td>{p.quantity}</td>
+                    <td>{p.stock}</td>
                     <td>
                       <Button
                         size="sm"
                         variant="outline-primary"
                         className="me-2"
-                        onClick={() => {
-                          setEditing(p);
-                          setForm({
-                            name: p.name || "",
-                            price: p.price || "",
-                            quantity: p.quantity || "",
-                            description: p.description || "",
-                            image: p.images?.[0] || p.image || "",
-                          });
-                          setImageFile(null);
-                          setShow(true);
-                        }}
+                        onClick={() => handleEdit(p)}
                       >
                         Sửa
                       </Button>
@@ -183,6 +271,13 @@ export default function SanPham() {
               </tbody>
             </Table>
           )}
+
+          <Pagination 
+            currentPage={currentPage} 
+            totalPages={totalPages} 
+            totalItems={totalItems}
+            onPageChange={fetchData}
+          />
         </Card.Body>
       </Card>
 
@@ -194,62 +289,29 @@ export default function SanPham() {
 
         <Modal.Body>
           <Form onSubmit={save}>
-            <Form.Control
-              className="mb-2"
-              placeholder="Tên sản phẩm"
-              value={form.name || ""}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-            />
-            <Form.Control
-              className="mb-2"
-              type="number"
-              placeholder="Giá"
-              value={form.price || ""}
-              onChange={(e) => setForm({ ...form, price: e.target.value })}
-            />
-            <Form.Control
-              className="mb-2"
-              type="number"
-              placeholder="Số lượng"
-              value={form.quantity || ""}
-              onChange={(e) => setForm({ ...form, quantity: e.target.value })}
-            />
-            <Form.Control
-              className="mb-2"
-              as="textarea"
-              placeholder="Mô tả"
-              value={form.description || ""}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
-            />
+            {renderFormInput("name", "text", "Tên sản phẩm")}
+            {renderFormInput("price", "number", "Giá")}
+            {renderFormInput("quantity", "number", "Số lượng")}
+            {renderFormInput("description", "text", "Mô tả")}
 
             <Form.Control
               className="mb-2"
               type="file"
               accept="image/*"
               onChange={(e) => {
-                const file = e.target.files[0];
+                const file = e.target.files?.[0];
                 if (!file) return;
                 setImageFile(file);
                 const reader = new FileReader();
-                reader.onload = () =>
-                  setForm({ ...form, image: reader.result });
+                reader.onload = () => setForm({ ...form, image: reader.result });
                 reader.readAsDataURL(file);
               }}
             />
 
-            {form.image && (
-              <img
-                src={form.image}
-                width={90}
-                style={{ borderRadius: 8 }}
-                className="mb-2"
-              />
-            )}
+            {form.image && <img src={form.image} width={90} style={{ borderRadius: 8 }} className="mb-2" />}
 
             <div className="text-end">
-              <Button type="submit">
-                {editing ? "Cập nhật" : "Thêm"}
-              </Button>
+              <Button type="submit">{editing ? "Cập nhật" : "Thêm"}</Button>
             </div>
           </Form>
         </Modal.Body>

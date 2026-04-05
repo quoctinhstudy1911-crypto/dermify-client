@@ -1,145 +1,91 @@
 import { Link, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useAdminAuth } from "@/context/AdminAuthContext";
+import "./Navbar_admin.css";
 
-export default function NavbarAdmin({ user, logout }) {
+export default function NavbarAdmin() {
   const [openMenu, setOpenMenu] = useState(false);
   const navigate = useNavigate();
+  const { admin, logoutAdmin } = useAdminAuth();
 
   const handleLogout = () => {
-    logout();
+    logoutAdmin();
     setOpenMenu(false);
-    navigate("/admin/login"); // 🔥 chuyển về login
+    navigate("/admin/login");
   };
 
+  useEffect(() => {
+    const close = (e) => { if (e.key === "Escape") setOpenMenu(false); };
+    window.addEventListener("keydown", close);
+    return () => window.removeEventListener("keydown", close);
+  }, []);
+
   return (
-    <nav
-      style={{
-        background: "#ffffff",
-        borderBottom: "1px solid #e5e7eb",
-        padding: "0 24px",
-        height: "64px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-      }}
-    >
-      {/* Logo */}
-      <Link
-        to="/admin"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "8px",
-          textDecoration: "none",
-          color: "#111827",
-          fontWeight: "700",
-          fontSize: "18px",
-        }}
-      >
-        <div
-          style={{
-            width: "32px",
-            height: "32px",
-            borderRadius: "8px",
-            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "white",
-            fontSize: "16px",
-          }}
-        >
-          D
+    <nav className="admin-navbar">
+      {/* LEFT: LOGO */}
+      <Link to="/admin" className="navbar-logo">
+        <div className="logo-box">D</div>
+        <div className="brand-wrapper">
+          <span className="brand-name">DERMIFY</span>
+          <span className="brand-badge">ADMIN</span>
         </div>
-        DERMIFY
       </Link>
 
-      {/* Right */}
-      <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-        {user ? (
-          <div style={{ position: "relative" }}>
-            <button
-              onClick={() => setOpenMenu(!openMenu)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "12px",
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                padding: "8px 12px",
-                borderRadius: "8px",
+      {/* RIGHT: USER SECTION */}
+      <div className="navbar-right">
+        {admin ? (
+          <div className="user-menu-wrapper">
+            <div 
+              className={`user-profile-trigger ${openMenu ? "active" : ""}`} 
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpenMenu(!openMenu);
               }}
             >
-              <div
-                style={{
-                  width: "36px",
-                  height: "36px",
-                  borderRadius: "50%",
-                  background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "white",
-                  fontWeight: "bold",
-                }}
-              >
-                {(user.name || user.email)?.[0]?.toUpperCase() || "A"}
-              </div>
-
-              <div style={{ textAlign: "left" }}>
-                <div style={{ fontSize: "14px", fontWeight: "600" }}>
-                  {user.name || "Admin"}
+              <div className="avatar-wrapper">
+                <div className="avatar-circle">
+                  {admin?.name?.[0]?.toUpperCase() || "A"}
                 </div>
-                <div style={{ fontSize: "12px", color: "#6b7280" }}>
-                  {user.email}
-                </div>
+                <div className="online-indicator"></div>
               </div>
-            </button>
+              
+              <div className="user-info-text d-none d-md-flex">
+                <span className="u-name">{admin?.name || "Administrator"}</span>
+                <span className="u-role">Quản trị viên</span>
+              </div>
+              <span className={`arrow-icon ${openMenu ? "rotate" : ""}`}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+              </span>
+            </div>
 
+            {/* DROPDOWN MENU */}
             {openMenu && (
-              <div
-                style={{
-                  position: "absolute",
-                  top: "100%",
-                  right: 0,
-                  marginTop: "8px",
-                  background: "white",
-                  border: "1px solid #e5e7eb",
-                  borderRadius: "8px",
-                  boxShadow: "0 10px 15px rgba(0,0,0,0.1)",
-                  minWidth: "180px",
-                }}
-              >
-                <a
-                  href="/admin/profile"
-                  style={{ display: "block", padding: "10px 16px" }}
-                >
-                  👤 Tài khoản
-                </a>
-
-                <button
-                  onClick={handleLogout}
-                  style={{
-                    width: "100%",
-                    padding: "10px 16px",
-                    background: "none",
-                    border: "none",
-                    textAlign: "left",
-                    color: "red",
-                    cursor: "pointer",
-                  }}
-                >
-                  🚪 Đăng xuất
-                </button>
-              </div>
+              <>
+                <div className="menu-backdrop" onClick={() => setOpenMenu(false)} />
+                <div className="dropdown-box shadow-lg animate-fade-in">
+                  <div className="dropdown-header">
+                    <p className="header-email">{admin?.accountId?.email || "admin@dermify.vn"}</p>
+                  </div>
+                  
+                  <div className="menu-list">
+                    <Link to="/admin/profile" className="menu-item" onClick={() => setOpenMenu(false)}>
+                      <span className="menu-icon">👤</span> 
+                      <span>Hồ sơ cá nhân</span>
+                    </Link>
+                    
+                    <div className="menu-divider" />
+                    
+                    <button onClick={handleLogout} className="menu-item logout-red">
+                      <span className="menu-icon">🚪</span> 
+                      <span>Đăng xuất</span>
+                    </button>
+                  </div>
+                </div>
+              </>
             )}
           </div>
         ) : (
-          <button
-            onClick={() => navigate("/admin/login")}
-            className="btn btn-primary btn-sm"
-          >
+          <button onClick={() => navigate("/admin/login")} className="login-btn">
             Đăng nhập
           </button>
         )}

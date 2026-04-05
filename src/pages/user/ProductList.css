@@ -1,0 +1,44 @@
+.brand-gold {
+    color: #d4af37;
+}
+
+.product-card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.product-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.12) !important;
+}
+
+.product-img-wrapper {
+    height: 250px;
+    overflow: hidden;
+    background-color: #f8f9fa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.product-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* Giữ tỉ lệ ảnh không bị méo */
+    transition: transform 0.5s ease;
+}
+
+.product-card:hover .product-img {
+    transform: scale(1.1);
+}
+
+.pagination .page-item.active .page-link {
+    background-color: #d4af37;
+    border-color: #d4af37;
+    color: white;
+}
+
+.pagination .page-link {
+    color: #333;
+}

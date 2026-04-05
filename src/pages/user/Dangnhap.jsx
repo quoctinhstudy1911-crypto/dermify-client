@@ -1,50 +1,33 @@
 import { useState, useEffect } from "react";
-import {
-  Button,
-  Form,
-  Container,
-  Card,
-  InputGroup,
-  Spinner,
-  Row,
-  Col
+import { 
+  Button, Form, Container, Card, InputGroup, Spinner, Row, Col 
 } from "react-bootstrap";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useAuthContext } from "@/context/AuthContext";
 import { authApi } from "@/api";
 
-// Màu chủ đạo Dermify
 const DERMIFY_PINK = "#e60d78";
-// ================== CONTEXT ==================
-
 
 function Dangnhap() {
-  const { loginSuccess } = useAuthContext(); // Lấy hàm loginSuccess từ Context để cập nhật trạng thái đăng nhập
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-  });
-
+  const navigate = useNavigate();
+  const location = useLocation();
+  const from = location.state?.from?.pathname || "/";
+  const { loginSuccess, user } = useAuthContext();
+  
+  const [formData, setFormData] = useState({ email: "", password: "" }); 
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const navigate = useNavigate();
-
-  // UX: Nếu đã đăng nhập rồi thì không cho quay lại trang đăng nhập
   useEffect(() => {
-    const token = localStorage.getItem("accessToken");
-    if (token) {
-      navigate("/");
+    if (user) {
+      navigate("/", { replace: true });
     }
-  }, [navigate]);
+  }, [user, navigate]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
     if (error) setError(""); 
   };
 
@@ -60,33 +43,44 @@ function Dangnhap() {
       setLoading(true);
       setError("");
 
-      // Clean dữ liệu trước khi gửi (quan trọng!)
+      // --- LOGIC QUAN TRỌNG: DỌN DẸP TOKEN ADMIN ---
+      // Khi User đăng nhập, ta xóa sạch dấu vết của Admin để tránh axiosClient gửi nhầm token
+      localStorage.removeItem("admin_accessToken");
+      localStorage.removeItem("admin_refreshToken");
+      localStorage.removeItem("admin_info");
+      localStorage.removeItem("admin_role");
+
       const loginPayload = {
         email: formData.email.trim().toLowerCase(),
         password: formData.password,
       };
 
-      
       const res = await authApi.login(loginPayload);
-      // Lưu trữ thông tin (Sửa lại khớp với API trả về)
+
+      // Kiểm tra vai trò của user
+      if (res.role !== "customer") {
+        setError("Tài khoản này không thuộc hệ thống người dùng (Customer)");
+        setLoading(false);
+        return;
+      }
+
+      // --- LƯU TRỮ TOKEN USER (Key chuẩn cho User) ---
       localStorage.setItem("accessToken", res.accessToken);
       localStorage.setItem("refreshToken", res.refreshToken);
-      localStorage.setItem("role", res.role);
-      if (res.user) {
-      localStorage.setItem("user", JSON.stringify(res.user));
-      }
-      await loginSuccess(res.user);
-      const role = res.role;
-      // Điều hướng dựa trên vai trò
-      if (role === "customer") {
-        navigate("/");
-      } else {
-        navigate("/admin/dashboard");
-      }
-    
+
+      const userData = {
+        role: res.role,
+      };
+      localStorage.setItem("user", JSON.stringify(userData));
+
+      // Update context toàn cục cho User
+      loginSuccess(res.user);
+
+      // Redirect về trang trước đó
+      navigate(from, { replace: true });
+
     } catch (err) {
-      // Hiển thị lỗi chi tiết từ Server (ví dụ: "Tài khoản chưa xác thực")
-      setError(err?.response?.data?.message || err?.message || "Sai email hoặc mật khẩu");
+      setError(err?.message || "Sai email hoặc mật khẩu");
     } finally {
       setLoading(false);
     }
@@ -116,8 +110,8 @@ function Dangnhap() {
                   <Form.Label className="small fw-bold text-secondary">EMAIL</Form.Label>
                   <Form.Control
                     type="email"
-                    placeholder="example@gmail.com"
                     name="email"
+                    placeholder="example@gmail.com"
                     value={formData.email}
                     onChange={handleChange}
                     required
@@ -130,8 +124,8 @@ function Dangnhap() {
                   <InputGroup>
                     <Form.Control
                       type={showPassword ? "text" : "password"}
-                      placeholder="Nhập mật khẩu"
                       name="password"
+                      placeholder="Nhập mật khẩu"
                       value={formData.password}
                       onChange={handleChange}
                       required
@@ -191,9 +185,6 @@ function Dangnhap() {
               </div>
             </Card.Body>
           </Card>
-          <p className="text-center text-muted mt-4 small">
-            &copy; 2026 Dermify Project - STU University
-          </p>
         </Col>
       </Row>
     </Container>
