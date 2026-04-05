@@ -44,36 +44,42 @@ axiosClient.interceptors.response.use(
     return res;
   },
   
-  (error) => {
-    const status = error.response?.status;
-    const currentPath = window.location.pathname;
+// Trong file axiosClient.js - phần xử lý lỗi (error)
+(error) => {
+  const status = error.response?.status;
+  const currentPath = window.location.pathname;
+  
+  // Lấy token hiện tại để kiểm tra
+  const isAdminPage = currentPath.startsWith("/admin");
+  const hasToken = isAdminPage 
+    ? localStorage.getItem("admin_accessToken") 
+    : localStorage.getItem("accessToken");
+
+  const isLoginPage = currentPath.includes("/login") || currentPath.includes("/dangnhap");
+
+  // CHỈ HIỆN ALERT KHI: Bị lỗi 401 VÀ Trong máy thực sự đang có Token (Token hết hạn)
+  if (status === 401 && hasToken && !isRedirecting && !isLoginPage) {
+    isRedirecting = true;
     
-    // Kiểm tra xem có phải đang ở trang login không
-    const isLoginPage = currentPath.includes("/login") || currentPath.includes("/dangnhap");
-
-    // Nếu lỗi 401 (Hết hạn) và KHÔNG phải đang ở trang login thì mới đá ra ngoài
-    if (status === 401 && !isRedirecting && !isLoginPage) {
-      isRedirecting = true;
-      
-      const isAdminPage = currentPath.startsWith("/admin");
-      if (isAdminPage) {
-        localStorage.removeItem("admin_accessToken");
-        localStorage.removeItem("admin_refreshToken");
-      } else {
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("refreshToken");
-      }
-
-      alert("Phiên đăng nhập hết hạn!");
-      window.location.href = isAdminPage ? "/admin/login" : "/dangnhap";
+    // Xóa token lỗi
+    if (isAdminPage) {
+      localStorage.removeItem("admin_accessToken");
+      localStorage.removeItem("admin_refreshToken");
+    } else {
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
+      localStorage.removeItem("user");
     }
 
-    // Trả về error object chuẩn để dùng ở catch(err)
-    return Promise.reject({
-      message: error.response?.data?.message || "Có lỗi xảy ra",
-      status,
-    });
+    alert("Phiên đăng nhập hết hạn!");
+    window.location.href = isAdminPage ? "/admin/login" : "/dangnhap";
   }
+
+  return Promise.reject({
+    message: error.response?.data?.message || "Có lỗi xảy ra",
+    status,
+  });
+}
 );
 
 export default axiosClient;
