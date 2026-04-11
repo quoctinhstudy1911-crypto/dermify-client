@@ -1,21 +1,22 @@
 import { Route, Navigate, Outlet } from "react-router-dom";
-// Import các component cần thiết
 import AdminLayout from "../layouts/AdminLayout";
-// Import các trang admin
 import AdminDashboard from "../pages/admin/AdminDashboard";
 import SanPham from "../pages/admin/SanPham";
 import DangNhap from "../pages/admin/DangNhap";
+import DonHang from "@/pages/admin/DonHang";
 
 // Component bảo vệ route dành cho admin
 const RequireAdmin = () => {
-  // Lấy token và role từ localStorage (khác với customer dùng context)
-  const token = localStorage.getItem("accessToken");
-  const role = localStorage.getItem("role");
-// Nếu không có token, chuyển hướng đến trang đăng nhập
+  // Kiểm tra token và role từ localStorage
+  const token = localStorage.getItem("admin_accessToken");
+  const role = localStorage.getItem("admin_role");
+
+  // Nếu không có token admin, chuyển hướng đến trang đăng nhập admin
   if (!token) {
     return <Navigate to="/admin/login" replace />;
   }
 
+  // Nếu role không phải admin, đá về trang chủ của khách
   if (!["admin", "super_admin"].includes(role)) {
     return <Navigate to="/" replace />;
   }
@@ -23,18 +24,20 @@ const RequireAdmin = () => {
   return <Outlet />;
 };
 
-// Định nghĩa các route cho admin
 export default function AdminRoutes() {
   return (
     <>
-      {/* Route đăng nhập admin không cần bảo vệ */}
+      {/* Route đăng nhập admin */}
       <Route path="/admin/login" element={<DangNhap />} />
       
-      {/* Các route admin khác được bảo vệ bởi RequireAdmin */}
+      {/* Các route admin được bảo vệ */}
       <Route element={<RequireAdmin />}>
+        {/* AdminLayout chứa Sidebar và Navbar_admin */}
         <Route element={<AdminLayout />}>
+          {/* Lưu ý: index giúp /admin khớp trực tiếp với Dashboard */}
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/products" element={<SanPham />} />
+          <Route path="/admin/orders" element={<DonHang />} />
         </Route>
       </Route>
     </>

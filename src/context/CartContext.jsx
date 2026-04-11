@@ -33,9 +33,16 @@ const refreshCart = async () => {
   }
 };
 
-  useEffect(() => {
-    if (user) refreshCart();
-    else { setCart([]); setCartCount(0); }
+useEffect(() => {
+    if (window.location.pathname.startsWith("/admin")) return;
+
+    if (user) {
+      refreshCart();
+    } else {
+      setCart([]);
+      // Sửa chỗ này nè! Nếu state của bạn là cartCount thì phải là setCartCount
+      setCartCount(0); 
+    }
   }, [user]);
 
   return (

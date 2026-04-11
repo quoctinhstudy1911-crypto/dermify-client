@@ -1,319 +1,287 @@
-import { useEffect, useState } from "react";
-import { Modal, Button, Form, Table, Spinner, Card } from "react-bootstrap";
-import productApi from "@/api/productApi";
-import uploadApi from "@/api/uploadApi";
+import { useEffect, useState, useCallback } from "react";
+import { Modal, Button, Form, Table, Spinner, Card, Badge } from "react-bootstrap";
+import { 
+  Package, Plus, Edit3, Trash2, 
+  ChevronLeft, ChevronRight, Image as ImageIcon 
+} from "lucide-react";
+import { productApi, uploadApi } from "@/api";
 
-const INITIAL_FORM = { name: "", price: "", quantity: "", description: "", image: "" };
-const ITEMS_PER_PAGE = 10;
-
-// Component Phân trang
-const Pagination = ({ currentPage, totalPages, totalItems, onPageChange }) => {
-  if (totalPages <= 1) return null;
-
-  const pages = Array.from({ length: totalPages }, (_, i) => i + 1)
-    .filter(p => p === 1 || p === totalPages || (p >= currentPage - 1 && p <= currentPage + 1));
-
-  return (
-    <div className="d-flex justify-content-center align-items-center gap-2 mt-4 flex-wrap">
-      <Button 
-        variant="outline-secondary" 
-        size="sm" 
-        disabled={currentPage === 1} 
-        onClick={() => onPageChange(currentPage - 1)}
-      >
-        ← Trước
-      </Button>
-
-      <div className="d-flex gap-1 flex-wrap">
-        {pages.map((page, i) => (
-          <div key={page}>
-            {i > 0 && pages[i - 1] !== page - 1 && <span className="px-2">...</span>}
-            <Button
-              variant={currentPage === page ? "primary" : "outline-secondary"}
-              size="sm"
-              onClick={() => onPageChange(page)}
-            >
-              {page}
-            </Button>
-          </div>
-        ))}
-      </div>
-
-      <Button
-        variant="outline-secondary"
-        size="sm"
-        disabled={currentPage === totalPages}
-        onClick={() => onPageChange(currentPage + 1)}
-      >
-        Sau →
-      </Button>
-
-      <span className="ms-3 text-muted small">
-        Trang {currentPage}/{totalPages} ({totalItems} sản phẩm)
-      </span>
-    </div>
-  );
-};
+const INITIAL_FORM = { name: "", price: "", stock: "", description: "", images: [] };
+const ITEMS_PER_PAGE = 8; // Khớp với limit mặc định của Backend Service
 
 export default function SanPham() {
+  // --- STATES ---
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [show, setShow] = useState(false);
+  const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(INITIAL_FORM);
   const [imageFile, setImageFile] = useState(null);
+  const [previewImage, setPreviewImage] = useState("");
+
+  // --- PAGINATION STATES (Đồng bộ với pagination object từ Backend) ---
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
-  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
-  const formatPrice = (p) => {
-    if (!p && p !== 0) return "0 VND";
-    const nghin = Math.floor(Number(p) / 1000);
-    return `${nghin.toLocaleString("vi-VN")}.000 VND`;
-  };
+  // --- FORMATTER ---
+  const formatPrice = (p) => new Intl.NumberFormat("vi-VN").format(p || 0) + " ₫";
 
-  const fetchData = async (page = 1) => {
+  // --- FETCH DATA (Dựa trên productList service trả về {products, pagination}) ---
+  const fetchData = useCallback(async (page = 1) => {
     setLoading(true);
     try {
-      const res = await productApi.getProducts({ limit: ITEMS_PER_PAGE, page });
-      
-      // Xử lý response từ API
-      let data = Array.isArray(res) ? res : res?.products || res?.data?.products || [];
-      
-      setProducts(data);
-      setCurrentPage(page);
+      // Gửi params: page và limit (Backend Service sẽ tự tính skip)
+      const res = await productApi.getProducts({ 
+        page: page, 
+        limit: ITEMS_PER_PAGE 
+      });
 
-      // Xác định total pages
-      if (res?.totalPages && res?.totalItems) {
-        // Backend trả totalPages và totalItems
-        setTotalPages(res.totalPages);
-        setTotalItems(res.totalItems);
-      } else if (totalCount > 0) {
-        // Dùng totalCount từ init
-        const pages = Math.ceil(totalCount / ITEMS_PER_PAGE);
-        setTotalPages(pages);
-        setTotalItems(totalCount);
-      } else {
-        // Fallback: giả định dựa trên độ dài dữ liệu
-        const hasMoreData = data.length === ITEMS_PER_PAGE;
-        const pages = hasMoreData ? page + 1 : page;
-        setTotalPages(pages);
-        setTotalItems(data.length > 0 ? page * ITEMS_PER_PAGE : 0);
-      }
+      /* LƯU Ý: axiosClient đã bóc lớp 'data'. 
+         Theo Backend của bạn: res lúc này là { products, pagination: { totalProducts, totalPages, ... } }
+      */
+      const productList = res?.products || [];
+      const pagination = res?.pagination || {};
+
+      setProducts(productList);
+      setTotalItems(pagination.totalProducts || productList.length);
+      setTotalPages(pagination.totalPages || 1);
+      setCurrentPage(page);
+    } catch (error) {
+      console.error("Lỗi fetch sản phẩm:", error);
     } finally {
       setLoading(false);
     }
-  };
-
-  // Init: fetch total items
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await productApi.getProducts({ limit: 1, page: 1 });
-        const total = res?.totalItems || res?.total || (Array.isArray(res) ? 1 : 0);
-        if (total > 0) setTotalCount(total);
-      } catch (err) {
-        console.log("Get total items failed:", err.message);
-      }
-      fetchData(1);
-    })();
   }, []);
 
-  const save = async (e) => {
+  useEffect(() => {
+    fetchData(1);
+  }, [fetchData]);
+
+  // --- HANDLERS ---
+  const handleShowModal = (product = null) => {
+    if (product) {
+      setEditing(product);
+      setForm({
+        name: product.name,
+        price: product.price,
+        stock: product.stock,
+        description: product.description,
+        images: product.images || [],
+      });
+      setPreviewImage(product.images?.[0] || "");
+    } else {
+      setEditing(null);
+      setForm(INITIAL_FORM);
+      setPreviewImage("");
+    }
+    setImageFile(null);
+    setShowModal(true);
+  };
+
+  const handleSave = async (e) => {
     e.preventDefault();
     setLoading(true);
-
     try {
-      // 1. Chuẩn bị ảnh (giữ ảnh cũ hoặc mặc định rỗng)
-      let finalImages = editing?.images || [];
+      let finalImages = form.images;
 
-      // 2. Tận dụng uploadApi khi chọn file mới
+      // 1. Xử lý Upload ảnh nếu Admin chọn file mới
       if (imageFile) {
-        const uploadRes = await uploadApi.uploadImages([imageFile]);
-        if (uploadRes && uploadRes.length > 0) {
+        const uploadRes = await uploadApi.uploadImages(imageFile);
+        if (Array.isArray(uploadRes) && uploadRes.length > 0) {
           finalImages = uploadRes;
         }
       }
 
-      // 3. Dữ liệu sản phẩm (JSON)
-      const productData = {
-        name: form.name,
+      // 2. Chuẩn bị payload (Khớp với createProduct/updateProductById service)
+      const payload = {
+        ...form,
         price: Number(form.price),
-        quantity: Number(form.quantity),
-        description: form.description,
-        images: finalImages,
+        stock: Number(form.stock),
+        images: finalImages
       };
 
       if (editing) {
-        await productApi.updateProduct(editing._id || editing.id, productData);
+        // Cập nhật theo ID (Middleware trong service sẽ lo việc update slug)
+        await productApi.updateProduct(editing._id || editing.id, payload);
       } else {
-        await productApi.createProduct(productData);
+        await productApi.createProduct(payload);
       }
 
-      fetchData(1);
-      setShow(false);
-      setEditing(null);
-      setForm(INITIAL_FORM);
-      setImageFile(null);
-      alert("Lưu sản phẩm thành công!");
+      setShowModal(false);
+      fetchData(currentPage);
+      alert("Đã lưu thay đổi vào kho hàng!");
     } catch (error) {
-      alert(error.message || "Có lỗi xảy ra!");
+      alert(error.message || "Có lỗi xảy ra");
     } finally {
       setLoading(false);
     }
   };
 
-  const remove = async (id) => {
-    if (!window.confirm("Xóa sản phẩm?")) return;
-    await productApi.deleteProduct(id);
-    fetchData(currentPage);
+  const handleDelete = async (id) => {
+    if (!window.confirm("Bạn muốn xóa sản phẩm này? (Xóa mềm)")) return;
+    try {
+      await productApi.deleteProduct(id);
+      fetchData(currentPage);
+    } catch (error) {
+      alert("Lỗi khi xóa sản phẩm");
+    }
   };
-
-  const handleEdit = (product) => {
-    setEditing(product);
-    setForm({
-      name: product.name || "",
-      price: product.price || "",
-      quantity: product.quantity || "",
-      description: product.description || "",
-      image: product.images?.[0] || product.image || "",
-    });
-    setImageFile(null);
-    setShow(true);
-  };
-
-  const renderFormInput = (field, type = "text", placeholder = "") => (
-    <Form.Control
-      key={field}
-      className="mb-2"
-      type={field === "description" ? undefined : type}
-      as={field === "description" ? "textarea" : undefined}
-      rows={field === "description" ? 3 : undefined}
-      placeholder={placeholder}
-      value={form[field] || ""}
-      onChange={(e) => setForm({ ...form, [field]: e.target.value })}
-    />
-  );
 
   return (
-    <div className="p-4">
-      <Card className="shadow-sm border-0">
-        <Card.Body>
-          <div className="d-flex justify-content-between mb-3">
-            <h5 className="fw-bold">Quản lý sản phẩm ({totalItems})</h5>
-            <Button onClick={() => { setForm(INITIAL_FORM); setEditing(null); setImageFile(null); setShow(true); }}>
-              + Thêm
+    <div className="p-4 bg-light min-vh-100">
+      <Card className="border-0 shadow-sm" style={{ borderRadius: "15px" }}>
+        <Card.Body className="p-4">
+          {/* Header */}
+          <div className="d-flex justify-content-between align-items-center mb-4">
+            <div>
+              <h3 className="fw-bold text-dark mb-1">📦 Kho Sản Phẩm</h3>
+              <p className="text-muted small mb-0">
+                Hiển thị <strong>{products.length}</strong> trên tổng số <strong>{totalItems}</strong> sản phẩm
+              </p>
+            </div>
+            <Button 
+              className="d-flex align-items-center gap-2 px-4 py-2 fw-bold border-0"
+              style={{ backgroundColor: "#4318FF", borderRadius: "10px" }}
+              onClick={() => handleShowModal()}
+            >
+              <Plus size={18} /> Thêm mới
             </Button>
           </div>
 
-          {loading ? (
-            <div className="text-center py-4">
-              <Spinner />
-            </div>
-          ) : (
-            <Table hover responsive className="align-middle">
-              <thead className="table-light">
-                <tr>
-                  <th>STT</th>
-                  <th>Ảnh</th>
-                  <th>Tên</th>
-                  <th>Giá</th>
-                  <th>SL</th>
-                  <th></th>
+          {/* Table */}
+          <div className="table-responsive">
+            <Table hover className="align-middle mb-0" style={{ borderCollapse: "separate", borderSpacing: "0 10px" }}>
+              <thead>
+                <tr className="text-secondary small text-uppercase fw-bolder">
+                  <th className="ps-4 border-0">STT</th>
+                  <th className="border-0">Sản phẩm</th>
+                  <th className="border-0">Giá niêm yết</th>
+                  <th className="border-0 text-center">Tồn kho</th>
+                  <th className="border-0 text-end pe-4">Hành động</th>
                 </tr>
               </thead>
               <tbody>
-                {!products.length ? (
+                {loading ? (
                   <tr>
-                    <td colSpan={6} className="text-center py-4">
-                      Không có dữ liệu
+                    <td colSpan="5" className="text-center py-5">
+                      <Spinner animation="border" variant="primary" />
                     </td>
                   </tr>
-                ) : products.map((p, i) => (
-                  <tr key={p._id || i}>
-                    <td>{i + 1}</td>
+                ) : products.map((p, index) => (
+                  <tr key={p._id || p.id} className="shadow-sm bg-white border-0">
+                    <td className="ps-4 fw-bold text-secondary" style={{ borderRadius: "10px 0 0 10px" }}>
+                      {(currentPage - 1) * ITEMS_PER_PAGE + (index + 1)}
+                    </td>
                     <td>
-                      {(p.images?.[0] || p.image) ? (
+                      <div className="d-flex align-items-center">
                         <img
-                          src={p.images?.[0] || p.image}
-                          width={55}
-                          height={55}
-                          style={{ objectFit: "cover", borderRadius: 8 }}
+                          src={p.images?.[0] || ""}
+                          className="rounded-3 me-3 border"
+                          style={{ width: "45px", height: "45px", objectFit: "cover" }}
+                          onError={(e) => e.target.src = "https://placehold.co/50x50?text=IMG"}
                         />
-                      ) : "no img"}
+                        <span className="fw-bold text-dark">{p.name}</span>
+                      </div>
                     </td>
-                    <td className="fw-semibold">{p.name}</td>
-                    <td className="text-danger fw-bold">
-                      {formatPrice(p.price)}
-                    </td>
-                    <td>{p.quantity}</td>
-                    <td>
-                      <Button
-                        size="sm"
-                        variant="outline-primary"
-                        className="me-2"
-                        onClick={() => handleEdit(p)}
+                    <td className="fw-bold text-primary">{formatPrice(p.price)}</td>
+                    <td className="text-center">
+                      <Badge 
+                        bg={p.stock > 10 ? "success" : "danger"} 
+                        className={`px-3 py-2 fw-medium ${p.stock > 10 ? "bg-opacity-10 text-success" : "bg-opacity-10 text-danger"}`}
+                        style={{ border: '1px solid currentColor' }}
                       >
-                        Sửa
+                        {p.stock} đơn vị
+                      </Badge>
+                    </td>
+                    <td className="text-end pe-4" style={{ borderRadius: "0 10px 10px 0" }}>
+                      <Button variant="link" className="text-primary p-0 me-3 shadow-none" onClick={() => handleShowModal(p)}>
+                        <Edit3 size={18} />
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="outline-danger"
-                        onClick={() => remove(p._id)}
-                      >
-                        Xóa
+                      <Button variant="link" className="text-danger p-0 shadow-none" onClick={() => handleDelete(p._id || p.id)}>
+                        <Trash2 size={18} />
                       </Button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </Table>
-          )}
+          </div>
 
-          <Pagination 
-            currentPage={currentPage} 
-            totalPages={totalPages} 
-            totalItems={totalItems}
-            onPageChange={fetchData}
-          />
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="d-flex justify-content-center align-items-center gap-3 mt-4">
+              <Button 
+                variant="white" className="border rounded-circle p-2 shadow-sm"
+                disabled={currentPage === 1} onClick={() => fetchData(currentPage - 1)}
+              >
+                <ChevronLeft size={20} />
+              </Button>
+              <span className="fw-bold">Trang {currentPage} / {totalPages}</span>
+              <Button 
+                variant="white" className="border rounded-circle p-2 shadow-sm"
+                disabled={currentPage === totalPages} onClick={() => fetchData(currentPage + 1)}
+              >
+                <ChevronRight size={20} />
+              </Button>
+            </div>
+          )}
         </Card.Body>
       </Card>
 
-      {/* MODAL */}
-      <Modal show={show} onHide={() => setShow(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>{editing ? "Sửa" : "Thêm"} sản phẩm</Modal.Title>
-        </Modal.Header>
-
-        <Modal.Body>
-          <Form onSubmit={save}>
-            {renderFormInput("name", "text", "Tên sản phẩm")}
-            {renderFormInput("price", "number", "Giá")}
-            {renderFormInput("quantity", "number", "Số lượng")}
-            {renderFormInput("description", "text", "Mô tả")}
-
-            <Form.Control
-              className="mb-2"
-              type="file"
-              accept="image/*"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
-                setImageFile(file);
-                const reader = new FileReader();
-                reader.onload = () => setForm({ ...form, image: reader.result });
-                reader.readAsDataURL(file);
-              }}
-            />
-
-            {form.image && <img src={form.image} width={90} style={{ borderRadius: 8 }} className="mb-2" />}
-
-            <div className="text-end">
-              <Button type="submit">{editing ? "Cập nhật" : "Thêm"}</Button>
+      {/* Modal Form */}
+      <Modal show={showModal} onHide={() => setShowModal(false)} centered size="lg">
+        <Form onSubmit={handleSave}>
+          <Modal.Header closeButton className="border-0 pt-4 px-4">
+            <Modal.Title className="fw-bold">{editing ? "Cập Nhật Sản Phẩm" : "Thêm Sản Phẩm Mới"}</Modal.Title>
+          </Modal.Header>
+          <Modal.Body className="p-4">
+            <div className="row g-4">
+              <div className="col-md-5">
+                <div className="rounded-4 border d-flex align-items-center justify-content-center bg-light mb-3" style={{ height: "280px" }}>
+                  {previewImage ? (
+                    <img src={previewImage} className="w-100 h-100 p-2" style={{ objectFit: "contain" }} />
+                  ) : (
+                    <div className="text-center text-muted">
+                      <ImageIcon size={48} strokeWidth={1} />
+                      <p className="small">Chưa có ảnh</p>
+                    </div>
+                  )}
+                </div>
+                <Form.Control type="file" size="sm" accept="image/*" onChange={(e) => {
+                  const file = e.target.files[0];
+                  if(file) { setImageFile(file); setPreviewImage(URL.createObjectURL(file)); }
+                }} />
+              </div>
+              <div className="col-md-7">
+                <Form.Group className="mb-3">
+                  <Form.Label className="small fw-bold">Tên sản phẩm</Form.Label>
+                  <Form.Control required value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
+                </Form.Group>
+                <div className="row g-3 mb-3">
+                  <div className="col-6">
+                    <Form.Label className="small fw-bold">Giá bán (₫)</Form.Label>
+                    <Form.Control type="number" required value={form.price} onChange={e => setForm({...form, price: e.target.value})} />
+                  </div>
+                  <div className="col-6">
+                    <Form.Label className="small fw-bold">Số lượng kho</Form.Label>
+                    <Form.Control type="number" required value={form.stock} onChange={e => setForm({...form, stock: e.target.value})} />
+                  </div>
+                </div>
+                <Form.Group>
+                  <Form.Label className="small fw-bold">Mô tả sản phẩm</Form.Label>
+                  <Form.Control as="textarea" rows={5} value={form.description} onChange={e => setForm({...form, description: e.target.value})} />
+                </Form.Group>
+              </div>
             </div>
-          </Form>
-        </Modal.Body>
+          </Modal.Body>
+          <Modal.Footer className="border-0 p-4">
+            <Button variant="light" className="px-4 fw-bold" onClick={() => setShowModal(false)}>Hủy</Button>
+            <Button type="submit" className="px-4 fw-bold text-white" style={{ backgroundColor: "#4318FF", border: "none" }} disabled={loading}>
+              {loading ? "Đang lưu..." : "Xác nhận lưu"}
+            </Button>
+          </Modal.Footer>
+        </Form>
       </Modal>
     </div>
   );

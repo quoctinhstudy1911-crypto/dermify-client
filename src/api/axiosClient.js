@@ -5,71 +5,81 @@ const axiosClient = axios.create({
   timeout: 10000,
 });
 
-// REQUEST
+// ======================
+// 1. REQUEST INTERCEPTOR
+// ======================
 axiosClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("accessToken");
+    const isAdminPage = window.location.pathname.startsWith("/admin");
+    const token = isAdminPage 
+      ? localStorage.getItem("admin_accessToken") 
+      : localStorage.getItem("accessToken");
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// Biến cờ để tránh redirect nhiều lần khi token hết hạn
 let isRedirecting = false;
-// RESPONSE trong axiosClient.js
+
+// ======================
+// 2. RESPONSE INTERCEPTOR (BÓC 2 LỚP)
+// ======================
 axiosClient.interceptors.response.use(
   (response) => {
-    const res = response.data;
-    console.log("FULL RESPONSE:", response.data);
+    // LỚP 1: axios trả về (response.data)
+    const res = response.data; 
 
-   // Case 1: chuẩn backend (có data)
-    if (res && typeof res.data !== "undefined") {
-      return res.data;
+    // LỚP 2: Backend của bạn bọc trong key 'data'
+    // Ví dụ: { success: true, data: { ... }, message: "" }
+    if (res && res.data !== undefined) {
+      // Trả về dữ liệu bên trong cùng
+      return res.data; 
     }
     
-    // Case 2: chuẩn cũ (không có data, trả về trực tiếp)
+    // Nếu không có lớp 'data', trả về nguyên bản (phòng hờ API khác)
     return res;
   },
   
-  // Xử lý lỗi toàn cục
-  (error) => {
-    const status = error.response?.status;
-    const currentPath = window.location.pathname;
+// Trong file axiosClient.js - phần xử lý lỗi (error)
+(error) => {
+  const status = error.response?.status;
+  const currentPath = window.location.pathname;
+  
+  // Lấy token hiện tại để kiểm tra
+  const isAdminPage = currentPath.startsWith("/admin");
+  const hasToken = isAdminPage 
+    ? localStorage.getItem("admin_accessToken") 
+    : localStorage.getItem("accessToken");
 
-    // 401 Unauthorized - Token hết hạn hoặc không hợp lệ
-    if (status === 401 && !isRedirecting) {
-      // Đặt cờ để tránh redirect nhiều lần
-      isRedirecting = true;
-      // 1. Xóa token cũ
+  const isLoginPage = currentPath.includes("/login") || currentPath.includes("/dangnhap");
+
+  // CHỈ HIỆN ALERT KHI: Bị lỗi 401 VÀ Trong máy thực sự đang có Token (Token hết hạn)
+  if (status === 401 && hasToken && !isRedirecting && !isLoginPage) {
+    isRedirecting = true;
+    
+    // Xóa token lỗi
+    if (isAdminPage) {
+      localStorage.removeItem("admin_accessToken");
+      localStorage.removeItem("admin_refreshToken");
+    } else {
       localStorage.removeItem("accessToken");
       localStorage.removeItem("refreshToken");
-
-      // 2. Nếu không phải đang ở trang đăng nhập/đăng ký hoặc trang chủ thì mới chuyển hướng về trang đăng nhập
-      const publicPages = ["/dangnhap", "/dangki", "/"];
-      const isPublic = publicPages.some((page) =>
-        currentPath.startsWith(page)
-      );
-       if (!isPublic) {
-        alert("Phiên đăng nhập hết hạn!");
-        window.location.href = "/dangnhap";
-      }
+      localStorage.removeItem("user");
     }
 
-    // 403 Forbidden - Người dùng không có quyền truy cập
-    if (status === 403) {
-      alert(error.response?.data?.message || "Bạn không có quyền thực hiện thao tác này!");
-    }
-
-    return Promise.reject({
-      message: error.response?.data?.message || "Có lỗi xảy ra",
-      status,
-    });
+    alert("Phiên đăng nhập hết hạn!");
+    window.location.href = isAdminPage ? "/admin/login" : "/dangnhap";
   }
+
+  return Promise.reject({
+    message: error.response?.data?.message || "Có lỗi xảy ra",
+    status,
+  });
+}
 );
 
 export default axiosClient;

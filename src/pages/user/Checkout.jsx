@@ -3,7 +3,6 @@ import { Container, Row, Col, Form, Button, Card, Table, Image } from "react-boo
 import { useCart } from "@/context/CartContext";
 import orderApi from "@/api/orderApi";
 import { useNavigate } from "react-router-dom";
-import MyNavbar from "../../components/user/Navbar";
 
 function Checkout() {
   const { cart, refreshCart, cartCount } = useCart();
@@ -50,12 +49,14 @@ function Checkout() {
 
       const res = await orderApi.customer.createOrder(payload);
       
-      if (res.success) {
-        alert(res.message || "Tạo đơn hàng thành công!");
-        
-        await refreshCart(); 
-        
-        navigate("/my-orders"); 
+     if (res) {
+        await refreshCart();
+
+        navigate("/order-success", {
+          state: {
+            orderCode: res.orderCode
+          }
+        });
       }
     } catch (error) {
   
@@ -72,7 +73,6 @@ function Checkout() {
 
   return (
     <>
-      <MyNavbar />
       <Container className="py-5">
         <h2 className="fw-bold mb-4">Thanh Toán</h2>
         <Form onSubmit={handleSubmit}>

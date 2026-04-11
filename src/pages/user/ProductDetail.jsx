@@ -3,7 +3,6 @@ import { useParams } from "react-router-dom";
 import { Container, Row, Col, Button, Spinner, Badge } from "react-bootstrap";
 import productApi from "@/api/productApi";
 import cartApi from "@/api/cartApi"; 
-import MyNavbar from "../../components/user/Navbar";
 import { useCart } from "@/context/CartContext";
 
 function ProductDetail() {
@@ -52,7 +51,7 @@ function ProductDetail() {
   if (loading) {
     return (
       <>
-        <MyNavbar />
+        
         <div className="text-center py-5">
           <Spinner animation="border" variant="warning" />
         </div>
@@ -63,7 +62,7 @@ function ProductDetail() {
   if (!product) {
     return (
       <>
-        <MyNavbar />
+        
         <div className="text-center py-5">Sản phẩm không tồn tại.</div>
       </>
     );
@@ -71,7 +70,7 @@ function ProductDetail() {
 
   return (
     <>
-      <MyNavbar />
+     
       <Container className="py-5">
         <Row>
           <Col md={6} className="mb-4">
