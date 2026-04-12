@@ -1,37 +1,46 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams,useNavigate } from "react-router-dom";
 import { Container, Row, Col, Button, Spinner, Badge } from "react-bootstrap";
 import productApi from "@/api/productApi";
 import cartApi from "@/api/cartApi"; 
 import { useCart } from "@/context/CartContext";
 
+
 function ProductDetail() {
-  const { slug } = useParams(); 
+  const { slug } = useParams();
+  const navigate = useNavigate();
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const { refreshCart } = useCart();
 
   // Hàm xử lý thêm vào giỏ hàng bám sát tài liệu API
   const handleAdd = async () => {
-    try {
-      // Gửi đúng productId và quantity = 1 theo yêu cầu Request Data (Mục 2.1)
-      await cartApi.addToCart({ 
-        productId: product._id, 
-        quantity: 1 
-      });
-      
-      // Cập nhật lại số lượng trên Badge Navbar
-      await refreshCart(); 
-      alert("Đã thêm " + product.name + " vào giỏ hàng thành công!");
-    } catch (error) {
-      // Xử lý lỗi 401 (Chưa đăng nhập) hoặc các lỗi khác từ Backend (Mục 9)
-      if (error.response?.status === 401) {
-        alert("Thu ơi, bạn cần đăng nhập để thực hiện chức năng này nhé!");
-      } else {
-        alert(error.response?.data?.message || "Có lỗi xảy ra khi thêm vào giỏ!");
+      try {
+
+        await cartApi.addToCart({ 
+          productId: product._id, 
+          quantity: 1 
+        });
+        
+        await refreshCart(); 
+        alert("Đã thêm vào giỏ hàng thành công! 🎉");
+
+      } catch (error) {
+        if (error.status === 401) {
+          const hasToken = localStorage.getItem("accessToken");
+          
+          const message = hasToken 
+            ? "Phiên đăng nhập đã hết hạn. Bạn có muốn đăng nhập lại không?" 
+            : "Bạn cần đăng nhập để thêm sản phẩm vào giỏ hàng. Đi đến trang đăng nhập ngay?";
+
+          if (window.confirm(message)) {
+            navigate("/dangnhap");
+          }
+        } else {
+          alert(error.message || "Có lỗi xảy ra khi thêm vào giỏ!");
+        }
       }
-    }
-  };
+    };
 
   useEffect(() => {
     const fetchDetail = async () => {

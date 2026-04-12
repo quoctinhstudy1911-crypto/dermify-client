@@ -18,12 +18,14 @@ function Trangchu() {
 
         const res = await productApi.getProducts({
           page: 1,
-          limit: 8, // lấy 8 sản phẩm nổi bật
+          limit: 8,
+          sort: "sold"
         });
 
-        setProducts(res.products || []);
+        setProducts(Array.isArray(res?.products) ? res.products : []);
       } catch (err) {
         console.error("Lỗi load sản phẩm:", err);
+        setProducts([]);
       } finally {
         setLoading(false);
       }

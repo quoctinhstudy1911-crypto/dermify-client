@@ -27,6 +27,9 @@ const staffApi = {
   
   // Lấy thông tin nhân viên của chính mình
   getMe: () => axiosClient.get("/staff/me"),
+
+  // Cập nhật thông tin nhân viên của chính mình
+  updateMe: (data) => axiosClient.put("/staff/me", data)
 };
 
 export default staffApi;
