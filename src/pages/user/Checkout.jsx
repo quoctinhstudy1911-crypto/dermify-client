@@ -1,17 +1,25 @@
 import { useEffect, useState } from "react";
-import { Container, Row, Col, Form, Button, Card, Table, Image } from "react-bootstrap";
+import { Container, Row, Col, Form, Button, Card, Table, Image, } from "react-bootstrap";
 import { useCart } from "@/context/CartContext";
 import orderApi from "@/api/orderApi";
 import userApi from "@/api/userApi";
 import { useNavigate } from "react-router-dom";
-
+import { useLocation } from "react-router-dom";
 function Checkout() {
-  const { cart, refreshCart, cartCount } = useCart();
+  const { cart, cartCount } = useCart();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-
-  // BƯỚC 1: TẠO BIẾN items từ cart.items (Backend structure)
-  const items = cart?.items || [];
+  const location = useLocation();
+  const buyNowItem = location.state?.buyNowItem;
+  // BƯỚC 1: TẠO BIẾN items từ cart.items
+  const items = buyNowItem
+    ? [
+        {
+          productId: buyNowItem.productId,
+          quantity: buyNowItem.quantity,
+        },
+      ]
+    : cart?.items || [];
 
   const [formData, setFormData] = useState({
     fullName: "",
@@ -20,10 +28,10 @@ function Checkout() {
     district: "",
     street: "",
     paymentMethod: "cod",
-    note: ""
+    note: "",
   });
 
-  // BƯỚC 2: LOAD DEFAULT ADDRESS 
+  // BƯỚC 2: LOAD DEFAULT ADDRESS
   useEffect(() => {
     const loadDefaultAddress = async () => {
       try {
@@ -37,7 +45,7 @@ function Checkout() {
             phone: defaultAddr.phone || "",
             province: defaultAddr.city || "",
             district: defaultAddr.district || "",
-            street: defaultAddr.street || ""
+            street: defaultAddr.street || "",
           }));
         }
       } catch (err) {
@@ -53,52 +61,65 @@ function Checkout() {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    // BƯỚC 3: CHECK EMPTY CART DỰA TRÊN items
-    if (items.length === 0) {
-      alert("Giỏ hàng đang trống, không thể tạo đơn hàng!");
-      return;
+  // 1. Kiểm tra lại danh sách items lần cuối
+  if (!items || items.length === 0) {
+    alert("Không có sản phẩm để thanh toán!");
+    return;
+  }
+
+  try {
+    setLoading(true);
+
+    // 2. Chuẩn bị payload 
+    const payload = {
+      shippingAddress: {
+        fullName: formData.fullName,
+        phone: formData.phone,
+        province: formData.province,
+        district: formData.district,
+        street: formData.street,
+      },
+      paymentMethod: formData.paymentMethod,
+      note: formData.note || "",
+      // Phải chắc chắn productId là string (chuỗi ID)
+      items: items.map((item) => ({
+        productId: item.productId?._id || item.productId,
+        quantity: item.quantity,
+      })),
+      isBuyNow: !!buyNowItem,
+    };
+
+    console.log("Dữ liệu gửi lên:", payload);
+
+    const res = await orderApi.customer.createOrder(payload);
+
+    if (res) {
+      navigate("/order-success", { state: { orderCode: res.orderCode } });
     }
+  } catch (error) {
+    // 3. Log chi tiết lỗi từ Server trả về để debug
+    console.error("Lỗi 500 từ Server:", error.response?.data);
+    
+    const serverMessage = error.response?.data?.message || "Server gặp lỗi khi tạo đơn hàng";
+    alert("Đặt hàng thất bại: " + serverMessage);
+  } finally {
+    setLoading(false);
+  }
+};
 
-    try {
-      setLoading(true);
-
-      const payload = {
-        shippingAddress: {
-          fullName: formData.fullName,
-          phone: formData.phone,
-          province: formData.province,
-          district: formData.district,
-          street: formData.street
-        },
-        paymentMethod: formData.paymentMethod,
-        note: formData.note
-      };
-
-      const res = await orderApi.customer.createOrder(payload);
-
-      if (res) {
-        await refreshCart();
-        navigate("/order-success", {
-          state: { orderCode: res.orderCode }
-        });
-      }
-    } catch (error) {
-      const errorMsg = error.message || "Lỗi hệ thống khi tạo đơn";
-      alert("Thất bại: " + errorMsg);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // BƯỚC 4: TÍNH TOÁN DỰA TRÊN items
-  const subtotal = items.reduce((acc, item) => acc + (item.productId?.price * item.quantity), 0);
+  const subtotal = items.reduce(
+    (acc, item) => acc + item.productId?.price * item.quantity,
+    0,
+  );
   const shippingFee = 30000;
   const totalPrice = subtotal + shippingFee;
 
   // Kiểm tra điền đủ thông tin để enable/disable nút bấm
+  // Tìm dòng này trong Checkout.jsx và sửa lại:
   const isValid =
+    (buyNowItem || (cart?.items && cart.items.length > 0)) && // Kiểm tra có hàng để mua không
     formData.fullName &&
     formData.phone &&
     formData.province &&
@@ -113,40 +134,48 @@ function Checkout() {
           <Row>
             <Col lg={7}>
               <Card className="p-4 shadow-sm border-0 mb-4 bg-light">
-                <h5 className="fw-bold mb-3 border-bottom pb-2">Thông tin giao hàng</h5>
+                <h5 className="fw-bold mb-3 border-bottom pb-2">
+                  Thông tin giao hàng
+                </h5>
                 <Form.Group className="mb-3">
-                  <Form.Label>Họ và tên người nhận <span className="text-danger">*</span></Form.Label>
-                  <Form.Control 
-                    name="fullName" 
-                    required 
-                    value={formData.fullName} 
-                    placeholder="Nguyễn Văn A" 
-                    onChange={handleInputChange} 
+                  <Form.Label>
+                    Họ và tên người nhận <span className="text-danger">*</span>
+                  </Form.Label>
+                  <Form.Control
+                    name="fullName"
+                    required
+                    value={formData.fullName}
+                    placeholder="Nguyễn Văn A"
+                    onChange={handleInputChange}
                   />
                 </Form.Group>
 
                 <Row>
                   <Col md={6}>
                     <Form.Group className="mb-3">
-                      <Form.Label>Số điện thoại <span className="text-danger">*</span></Form.Label>
-                      <Form.Control 
-                        name="phone" 
-                        required 
-                        value={formData.phone} 
-                        placeholder="0123456789" 
-                        onChange={handleInputChange} 
+                      <Form.Label>
+                        Số điện thoại <span className="text-danger">*</span>
+                      </Form.Label>
+                      <Form.Control
+                        name="phone"
+                        required
+                        value={formData.phone}
+                        placeholder="0123456789"
+                        onChange={handleInputChange}
                       />
                     </Form.Group>
                   </Col>
                   <Col md={6}>
                     <Form.Group className="mb-3">
-                      <Form.Label>Tỉnh / Thành phố <span className="text-danger">*</span></Form.Label>
-                      <Form.Control 
-                        name="province" 
-                        required 
-                        value={formData.province} 
-                        placeholder="HCM" 
-                        onChange={handleInputChange} 
+                      <Form.Label>
+                        Tỉnh / Thành phố <span className="text-danger">*</span>
+                      </Form.Label>
+                      <Form.Control
+                        name="province"
+                        required
+                        value={formData.province}
+                        placeholder="HCM"
+                        onChange={handleInputChange}
                       />
                     </Form.Group>
                   </Col>
@@ -155,25 +184,29 @@ function Checkout() {
                 <Row>
                   <Col md={6}>
                     <Form.Group className="mb-3">
-                      <Form.Label>Quận / Huyện <span className="text-danger">*</span></Form.Label>
-                      <Form.Control 
-                        name="district" 
-                        required 
-                        value={formData.district} 
-                        placeholder="Quận 1" 
-                        onChange={handleInputChange} 
+                      <Form.Label>
+                        Quận / Huyện <span className="text-danger">*</span>
+                      </Form.Label>
+                      <Form.Control
+                        name="district"
+                        required
+                        value={formData.district}
+                        placeholder="Quận 1"
+                        onChange={handleInputChange}
                       />
                     </Form.Group>
                   </Col>
                   <Col md={6}>
                     <Form.Group className="mb-3">
-                      <Form.Label>Số nhà, tên đường <span className="text-danger">*</span></Form.Label>
-                      <Form.Control 
-                        name="street" 
-                        required 
-                        value={formData.street} 
-                        placeholder="123 ABC" 
-                        onChange={handleInputChange} 
+                      <Form.Label>
+                        Số nhà, tên đường <span className="text-danger">*</span>
+                      </Form.Label>
+                      <Form.Control
+                        name="street"
+                        required
+                        value={formData.street}
+                        placeholder="123 ABC"
+                        onChange={handleInputChange}
                       />
                     </Form.Group>
                   </Col>
@@ -181,21 +214,23 @@ function Checkout() {
 
                 <Form.Group className="mb-0">
                   <Form.Label>Ghi chú đơn hàng</Form.Label>
-                  <Form.Control 
-                    name="note" 
-                    as="textarea" 
-                    rows={2} 
-                    value={formData.note} 
-                    placeholder="Giao giờ hành chính..." 
-                    onChange={handleInputChange} 
+                  <Form.Control
+                    name="note"
+                    as="textarea"
+                    rows={2}
+                    value={formData.note}
+                    placeholder="Giao giờ hành chính..."
+                    onChange={handleInputChange}
                   />
                 </Form.Group>
               </Card>
 
               <Card className="p-4 shadow-sm border-0 bg-light">
-                <h5 className="fw-bold mb-3 border-bottom pb-2">Phương thức thanh toán</h5>
-                {['cod', 'vnpay', 'momo', 'banking'].map((method) => (
-                  <Form.Check 
+                <h5 className="fw-bold mb-3 border-bottom pb-2">
+                  Phương thức thanh toán
+                </h5>
+                {["cod", "vnpay", "momo", "banking"].map((method) => (
+                  <Form.Check
                     key={method}
                     type="radio"
                     label={method.toUpperCase()}
@@ -211,34 +246,48 @@ function Checkout() {
             </Col>
 
             <Col lg={5}>
-              <Card className="p-4 shadow-sm border-0 sticky-top" style={{ top: "20px" }}>
+              <Card
+                className="p-4 shadow-sm border-0 sticky-top"
+                style={{ top: "20px" }}
+              >
                 <h5 className="fw-bold mb-3">Đơn hàng của bạn ({cartCount})</h5>
                 <div className="overflow-auto" style={{ maxHeight: "300px" }}>
                   <Table borderless size="sm">
                     <tbody>
                       {items.map((item) => (
-                        <tr key={item.productId?._id} className="align-middle border-bottom">
+                        <tr
+                          key={item.productId?._id}
+                          className="align-middle border-bottom"
+                        >
                           <td style={{ width: "60px" }} className="py-2">
-                            <Image 
-                              src={item.productId?.images?.[0]} 
-                              width={50} height={50} 
+                            <Image
+                              src={item.productId?.images?.[0]}
+                              width={50}
+                              height={50}
                               className="rounded border shadow-sm"
                               style={{ objectFit: "cover" }}
                             />
                           </td>
                           <td>
-                            <div className="fw-bold small">{item.productId?.name}</div>
-                            <div className="text-muted extra-small">Số lượng: {item.quantity}</div>
+                            <div className="fw-bold small">
+                              {item.productId?.name}
+                            </div>
+                            <div className="text-muted extra-small">
+                              Số lượng: {item.quantity}
+                            </div>
                           </td>
                           <td className="text-end fw-bold small">
-                            {(item.productId?.price * item.quantity).toLocaleString()}đ
+                            {(
+                              item.productId?.price * item.quantity
+                            ).toLocaleString()}
+                            đ
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </Table>
                 </div>
-                
+
                 <div className="mt-3">
                   <div className="d-flex justify-content-between mb-2">
                     <span className="text-muted">Tạm tính:</span>
@@ -251,14 +300,16 @@ function Checkout() {
                   <hr />
                   <div className="d-flex justify-content-between align-items-center">
                     <span className="fw-bold fs-5">TỔNG CỘNG:</span>
-                    <span className="fw-bold fs-4 text-danger">{totalPrice.toLocaleString()}đ</span>
+                    <span className="fw-bold fs-4 text-danger">
+                      {totalPrice.toLocaleString()}đ
+                    </span>
                   </div>
                 </div>
 
-                <Button 
-                  type="submit" 
-                  variant="dark" 
-                  size="lg" 
+                <Button
+                  type="submit"
+                  variant="dark"
+                  size="lg"
                   className="w-100 rounded-pill fw-bold py-3 mt-4"
                   disabled={loading || !isValid}
                 >
