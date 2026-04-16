@@ -26,7 +26,10 @@ const orderApi = {
     // Lấy danh sách tất cả đơn hàng với phân trang, lọc theo trạng thái, ngày tháng
     getAllOrders: (params) => axiosClient.get("/orders/admin/orders", { params }),
 
-    // Lấy chi tiết đơn hàng (bao gồm thông tin khách hàng, sản phẩm, lịch sử trạng thái)
+    // Lấy chi tiết đơn hàng cho admin
+    getOrderDetail: (orderId) => axiosClient.get(`/orders/admin/orders/${orderId}`),
+
+    // Lấy chi tiết và cập nhật trạng thái/thanh toán admin sử dụng các API hiện có
     updateStatus: (orderId, data) => 
       axiosClient.put(`/orders/admin/orders/${orderId}/status`, data),
 

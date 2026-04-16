@@ -38,4 +38,13 @@ const userApi = {
   },
 };
 
+const adminUserApi = {
+  getAllUsers: () => axiosClient.get("/users"),
+  createUser: (data) => axiosClient.post("/users", data),
+  updateUserStatus: (id, data) => axiosClient.put(`/users/${id}`, data),
+  deleteUser: (id) => axiosClient.delete(`/users/${id}`),
+};
+
+userApi.admin = adminUserApi;
+
 export default userApi;

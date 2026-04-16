@@ -9,7 +9,7 @@ export default function AdminLayout() {
     { path: "/admin", label: "Dashboard", icon: "📊" },
     { path: "/admin/products", label: "Sản phẩm", icon: "📦" },
     { path: "/admin/orders", label: "Đơn hàng", icon: "🛒" },
-    { path: "/admin/users", label: "Người dùng", icon: "👥" },
+    { path: "/admin/users", label: "Thông tin tài khoản", icon: "👤" },
     { path: "/admin/settings", label: "Cài đặt", icon: "⚙️" },
   ];
 
