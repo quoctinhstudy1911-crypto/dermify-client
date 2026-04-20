@@ -4,6 +4,10 @@ import AdminDashboard from "../pages/admin/AdminDashboard";
 import SanPham from "../pages/admin/SanPham";
 import DangNhap from "../pages/admin/DangNhap";
 import DonHang from "@/pages/admin/DonHang";
+import ChiTietDonHang from "@/pages/admin/ChiTietDonHang";
+import ThongTinTaiKhoan from "@/pages/admin/ThongTinTaiKhoan";
+import TaiKhoanUsers from "@/pages/admin/TaiKhoanUsers";
+import TaiKhoanAdmin from "@/pages/admin/TaiKhoanAdmin";
 
 // Component bảo vệ route dành cho admin
 const RequireAdmin = () => {
@@ -38,6 +42,10 @@ export default function AdminRoutes() {
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/products" element={<SanPham />} />
           <Route path="/admin/orders" element={<DonHang />} />
+          <Route path="/admin/orders/:orderId" element={<ChiTietDonHang />} />
+          <Route path="/admin/users" element={<ThongTinTaiKhoan />} />
+          <Route path="/admin/users/customers" element={<TaiKhoanUsers />} />
+          <Route path="/admin/users/admins" element={<TaiKhoanAdmin />} />
         </Route>
       </Route>
     </>
