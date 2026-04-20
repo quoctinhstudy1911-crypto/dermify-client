@@ -81,8 +81,22 @@ function Profile() {
 
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
+    setError(""); 
+    setSuccess("");
+
+    // --- BƯỚC VALIDATE MỚI THÊM ---
+    if (!profileForm.name.trim()) {
+      setError("Tên không được để trống");
+      return;
+    }
+
+    if (!/^[0-9]{9,11}$/.test(profileForm.phone)) {
+      setError("Số điện thoại không hợp lệ");
+      return;
+    }
+
+    // --- BẮT ĐẦU CẬP NHẬT ---
     setSaving(true);
-    setError(""); setSuccess("");
     try {
       const payload = { ...profileForm };
       if (!payload.gender) delete payload.gender;
@@ -135,7 +149,25 @@ function Profile() {
   };
 
   const handleSaveAddress = async () => {
+    // --- BƯỚC VALIDATE MỚI THÊM ---
+    if (!addressForm.fullName.trim()) {
+      setError("Tên người nhận không được để trống");
+      return;
+    }
+
+    if (!/^[0-9]{9,11}$/.test(addressForm.phone)) {
+      setError("Số điện thoại không hợp lệ");
+      return;
+    }
+
+    if (!addressForm.street || !addressForm.ward || !addressForm.district || !addressForm.city) {
+      setError("Vui lòng nhập đầy đủ địa chỉ");
+      return;
+    }
+
+    // --- BẮT ĐẦU LƯU ---
     setSaving(true);
+    setError(""); 
     try {
       const id = currentAddress?._id || currentAddress?.id;
       if (isEditing && id) {
@@ -163,6 +195,17 @@ function Profile() {
     }
   };
 
+  // ================= SET DEFAULT ADDRESS =================
+  const handleSetDefault = async (id) => {
+    try {
+      await userApi.setDefaultAddress(id);
+      await fetchAddresses(); 
+      setSuccess("Đã đặt làm địa chỉ mặc định!");
+    } catch {
+      setError("Không thể đặt mặc định!");
+    }
+  };
+
   // ================= UI =================
   if (loading || authLoading) {
     return (
@@ -184,7 +227,6 @@ function Profile() {
             {success && <Alert variant="success" dismissible onClose={() => setSuccess("")}>{success}</Alert>}
 
             <Row className="g-4">
-              {/* CỘT TRÁI: THÔNG TIN CƠ BẢN */}
               <Col md={5} className="text-center border-end pe-md-4">
                 <div className="mb-4">
                   <Image
@@ -204,7 +246,6 @@ function Profile() {
                 </div>
               </Col>
 
-              {/* CỘT PHẢI: FORM CHỈNH SỬA */}
               <Col md={7} className="ps-md-4">
                 <Form onSubmit={handleUpdateProfile}>
                   <Form.Group className="mb-3">
@@ -244,7 +285,6 @@ function Profile() {
               </Col>
             </Row>
 
-            {/* PHẦN ĐỊA CHỈ - TỐI ƯU BỐ CỤC */}
             <hr className="my-5" />
             <div className="d-flex justify-content-between align-items-center mb-4">
               <h5 className="fw-bold m-0" style={{ color: "#333" }}>📍 SỔ ĐỊA CHỈ</h5>
@@ -262,13 +302,32 @@ function Profile() {
                     <div>
                       <div className="fw-bold">
                         {addr.fullName} <span className="text-muted fw-normal ms-2">| {addr.phone}</span>
-                        {addr.isDefault && <Badge bg="danger-subtle" className="ms-2 text-danger border border-danger fw-normal">Mặc định</Badge>}
+                        {addr.isDefault && (
+                          <Badge bg="danger-subtle" className="ms-2 text-danger border border-danger fw-normal">
+                            Mặc định
+                          </Badge>
+                        )}
                       </div>
                       <div className="small text-secondary mt-1">{addr.street}, {addr.ward}, {addr.district}, {addr.city}</div>
+                      
+                      {!addr.isDefault && (
+                        <Button 
+                          variant="link" 
+                          size="sm" 
+                          className="p-0 text-success text-decoration-none mt-1 fw-bold"
+                          style={{ fontSize: '0.8rem' }}
+                          onClick={() => handleSetDefault(addr._id || addr.id)}
+                        >
+                          Đặt làm mặc định
+                        </Button>
+                      )}
                     </div>
-                    <div className="d-flex gap-2">
-                      <Button variant="link" size="sm" className="p-0 text-decoration-none text-primary" onClick={() => openEditModal(addr)}>Sửa</Button>
-                      <Button variant="link" size="sm" className="p-0 text-decoration-none text-danger" onClick={() => handleDeleteAddress(addr._id || addr.id)}>Xóa</Button>
+                    
+                    <div className="d-flex gap-3">
+                      <Button variant="link" size="sm" className="p-0 text-decoration-none text-primary fw-bold" onClick={() => openEditModal(addr)}>Sửa</Button>
+                      {!addr.isDefault && (
+                        <Button variant="link" size="sm" className="p-0 text-decoration-none text-danger fw-bold" onClick={() => handleDeleteAddress(addr._id || addr.id)}>Xóa</Button>
+                      )}
                     </div>
                   </ListGroup.Item>
                 ))
@@ -278,7 +337,6 @@ function Profile() {
         </Col>
       </Row>
 
-      {/* MODAL THÊM/SỬA ĐỊA CHỈ */}
       <Modal show={showAddressModal} onHide={() => setShowAddressModal(false)} centered>
         <Modal.Header closeButton className="border-0 pb-0">
           <Modal.Title className="fw-bold fs-5">THÔNG TIN ĐỊA CHỈ</Modal.Title>

@@ -1,23 +1,23 @@
 import { Container, Table, Button, Image, Row, Col } from "react-bootstrap";
 import { useCart } from "@/context/CartContext";
 import cartApi from "@/api/cartApi";
-import { useNavigate } from "react-router-dom"; // ✅ 1. Phải import cái này
+import { useNavigate } from "react-router-dom";
 
 function Cart() {
   const { cart, refreshCart } = useCart();
-  const navigate = useNavigate(); // ✅ 2. Đã có thể sử dụng navigate
+  const navigate = useNavigate();
+
+  const items = cart?.items || [];
 
   const handleUpdateQuantity = async (productId, newQty) => {
     try {
-      // Backend của Thu yêu cầu quantity > 0 (Mục 2.1)
-      // Nếu bấm giảm về 0, Thu nên hỏi người dùng có muốn xóa không hoặc để Backend tự xử lý
       await cartApi.updateCartItem({ 
         productId: productId, 
         quantity: newQty 
       });
       await refreshCart();
     } catch (error) {
-      const msg = error.response?.data?.message || "Không thể cập nhật số lượng";
+      const msg = error.message || "Không thể cập nhật số lượng";
       alert(msg);
     }
   };
@@ -28,7 +28,7 @@ function Cart() {
         await cartApi.removeCartItem(productId);
         await refreshCart();
       } catch (error) {
-        alert("Lỗi khi xóa sản phẩm");
+        alert(error.message || "Lỗi khi xóa sản phẩm");
       }
     }
   };
@@ -39,14 +39,15 @@ function Cart() {
         await cartApi.clearCart();
         await refreshCart();
       } catch (error) {
-        alert("Lỗi khi xóa giỏ hàng");
+        alert(error.message || "Lỗi khi xóa giỏ hàng");
       }
     }
   };
 
-  const totalBill = cart.reduce((total, item) => {
+  const totalBill = items.reduce((total, item) => {
     const price = item.productId?.price || 0;
-    return total + (price * item.quantity);
+    const quantity = item.quantity || 0;
+    return total + (price * quantity);
   }, 0);
 
   return (
@@ -54,14 +55,14 @@ function Cart() {
       <Container className="py-5">
         <div className="d-flex justify-content-between align-items-center mb-4">
           <h2 className="fw-bold">Giỏ hàng của bạn</h2>
-          {cart.length > 0 && (
+          {items.length > 0 && (
             <Button variant="outline-danger" size="sm" onClick={handleClearCart}>
               Xóa tất cả
             </Button>
           )}
         </div>
 
-        {cart.length > 0 ? (
+        {items.length > 0 ? (
           <Row>
             <Col lg={8}>
               <Table responsive className="align-middle border-top">
@@ -75,7 +76,7 @@ function Cart() {
                   </tr>
                 </thead>
                 <tbody>
-                  {cart.map((item) => (
+                  {items.map((item) => (
                     <tr key={item.productId?._id}>
                       <td>
                         <div className="d-flex align-items-center">
@@ -92,13 +93,13 @@ function Cart() {
                           </div>
                         </div>
                       </td>
-                      <td>{item.productId?.price?.toLocaleString()}đ</td>
+                      <td>{(item.productId?.price || 0).toLocaleString()}đ</td>
                       <td>
                         <div className="d-flex align-items-center border rounded-pill px-2 py-1" style={{ width: "fit-content" }}>
                           <Button 
                             variant="link" className="text-dark p-0 px-2 text-decoration-none"
                             onClick={() => handleUpdateQuantity(item.productId?._id, item.quantity - 1)}
-                            disabled={item.quantity <= 1} // Không cho giảm xuống dưới 1 ở nút này
+                            disabled={item.quantity <= 1}
                           >
                             -
                           </Button>
@@ -112,7 +113,7 @@ function Cart() {
                         </div>
                       </td>
                       <td className="fw-bold text-danger">
-                        {(item.productId?.price * item.quantity).toLocaleString()}đ
+                        {((item.productId?.price || 0) * item.quantity).toLocaleString()}đ
                       </td>
                       <td>
                         <Button 
@@ -139,7 +140,6 @@ function Cart() {
                   <span className="fw-bold">Tổng cộng:</span>
                   <span className="fw-bold text-danger fs-4">{totalBill.toLocaleString()}đ</span>
                 </div>
-                {/* ✅ 3. Thêm onClick để chuyển sang trang Checkout */}
                 <Button 
                   variant="dark" 
                   size="lg" 

@@ -60,7 +60,7 @@ function ResetPassword() {
     } catch (err) {
       setMessage({ 
         type: "danger", 
-        text: err?.response?.data?.message || err.message || "Đổi mật khẩu thất bại" 
+        text: err.message || "Đổi mật khẩu thất bại" 
       });
     } finally {
       setLoading(false);

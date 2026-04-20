@@ -70,6 +70,7 @@ function Dangnhap() {
 
       const userData = {
         role: res.role,
+        email: formData.email
       };
       localStorage.setItem("user", JSON.stringify(userData));
 

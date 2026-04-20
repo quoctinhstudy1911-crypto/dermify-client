@@ -33,8 +33,9 @@ const userApi = {
   uploadAvatar: (file) => {
     const formData = new FormData();
     formData.append("avatar", file);
-
-    return axiosClient.post("/customer/upload-avatar", formData);
+    return axiosClient.post("/customer/upload-avatar", formData, {
+      timeout: 60000, // tăng timeout cho việc upload ảnh lớn
+    });
   },
 };
 

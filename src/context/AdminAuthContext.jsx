@@ -1,3 +1,4 @@
+import { authApi } from "@/api";
 import { createContext, useContext, useState, useEffect } from "react";
 
 // 1. Khởi tạo Context
@@ -37,11 +38,17 @@ export const AdminAuthProvider = ({ children }) => {
   // ======================
   // LOGOUT
   // ======================
-  const logoutAdmin = () => {
+  const logoutAdmin = async () => {
+    try {
+      await authApi.logout(); 
+    } catch (err) {
+    }
+
     localStorage.removeItem("admin_info");
     localStorage.removeItem("admin_role");
-    localStorage.removeItem("admin_accessToken"); 
+    localStorage.removeItem("admin_accessToken");
     localStorage.removeItem("admin_refreshToken");
+
     setAdmin(null);
   };
 

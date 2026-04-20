@@ -112,15 +112,20 @@ useEffect(() => {
   // ======================
   // LOGOUT
   // ======================
-  const logout = () => {
-    // Chỉ xóa những key của User khách hàng
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
-    localStorage.removeItem("user");
-    // Nếu có key role chung thì xóa, còn không thì thôi
-    setUser(null);
-    setCartCount(0);
-  };
+const logout = async () => {
+  try {
+    await authApi.logout(); // gọi backend
+  } catch (err) {
+    // có thể fail nhưng vẫn logout local
+  }
+
+  localStorage.removeItem("accessToken");
+  localStorage.removeItem("refreshToken");
+  localStorage.removeItem("user");
+
+  setUser(null);
+  setCartCount(0);
+};
 
   return (
     <AuthContext.Provider

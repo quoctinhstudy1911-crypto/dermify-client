@@ -20,20 +20,16 @@ export default function DangNhap() {
     if (error) setError("");
   };
 
-  const handleSubmit = async (e) => {
+ const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       setLoading(true);
       setError("");
 
-      // --- BƯỚC QUAN TRỌNG: DỌN DẸP ---
-      // Xóa sạch token của User (khách) để tránh AuthContext của User tự động điều hướng về "/"
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("refreshToken");
-      localStorage.removeItem("user");
-      localStorage.removeItem("role");
+      // 1. Dọn dẹp sạch sẽ token cũ
+      localStorage.clear(); // Hoặc xóa từng cái như cũ của bạn
 
-      // 1. Gọi API Login - Nhận res đã bóc 2 lớp
+      // 2. Gọi API Login
       const res = await authApi.login({
         email: formData.email.trim().toLowerCase(),
         password: formData.password,
@@ -41,35 +37,30 @@ export default function DangNhap() {
 
       const { accessToken, refreshToken, role } = res;
 
-      // 2. Kiểm tra quyền Admin ngay tại đây
+      // 3. Kiểm tra quyền Admin
       if (!["admin", "super_admin"].includes(role)) {
         setError("Tài khoản không có quyền truy cập quản trị.");
         setLoading(false);
         return;
       }
 
-      // 3. Lưu token với tiền tố admin_
+      // 4. LƯU TOKEN TRƯỚC (Thao tác này là đồng bộ)
       localStorage.setItem("admin_accessToken", accessToken);
       localStorage.setItem("admin_refreshToken", refreshToken);
       localStorage.setItem("admin_role", role);
 
-      // Đợi một chút để LocalStorage ổn định
-      await new Promise(resolve => setTimeout(resolve, 150));
-
+      // 5. GỌI API GET ME NGAY LẬP TỨC
+      // Việc này sẽ giúp xác thực token ngay lập tức và lấy thông tin nhân viên để lưu vào context
       try {
-        // 4. Lấy thông tin nhân viên (Request này dùng admin_accessToken)
         const staffInfo = await staffApi.getMe();
         
-        // 5. Cập nhật Admin Context
         loginAdmin(staffInfo, role);
         
-        // 6. Điều hướng
         console.log("Đăng nhập Admin thành công!");
         navigate("/admin", { replace: true });
 
       } catch (err) {
         console.error("Lỗi xác thực staff:", err);
-        // Nếu lỗi getMe, xóa sạch để tránh treo session admin
         localStorage.removeItem("admin_accessToken");
         localStorage.removeItem("admin_refreshToken");
         localStorage.removeItem("admin_role");
