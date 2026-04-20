@@ -9,7 +9,7 @@ export default function OrderSuccess() {
 
   return (
     <Container className="text-center py-5">
-      <h2 className="fw-bold text-success">🎉 Đặt hàng thành công!</h2>
+      <h2 className="fw-bold text-success"> Đặt hàng thành công!</h2>
 
       <p className="mt-3">
         Cảm ơn bạn đã mua sắm. Đơn hàng của bạn đã được ghi nhận.
@@ -22,7 +22,7 @@ export default function OrderSuccess() {
       )}
 
       <div className="mt-4">
-        <Button variant="dark" onClick={() => navigate("/my-orders")}>
+        <Button variant="dark" onClick={() => navigate("/orders")}>
           Xem đơn hàng
         </Button>
 
