@@ -42,16 +42,7 @@ function ProductDetail() {
       try {
         setLoading(true);
 
-        let res;
-
-        // 🔥 GIỮ NGUYÊN LOGIC CỦA BẠN
-        // Nhưng vì productApi chỉ có getProductDetail, nên ta dùng nó cho cả 2
-        // Backend sẽ tự nhận diện chuỗi 24 ký tự là ID
-        if (slug.length === 24) {
-          res = await productApi.getProductDetail(slug); 
-        } else {
-          res = await productApi.getProductDetail(slug);
-        }
+        const res = await productApi.getProductDetail(slug);
 
         if (res) {
           setProduct(res);
@@ -122,7 +113,8 @@ function ProductDetail() {
       navigate("/checkout", {
         state: {
           buyNowItem: {
-            productId: product,
+            productId: product._id,
+            productData: product,
             quantity: 1,
           },
         },
@@ -169,25 +161,24 @@ function ProductDetail() {
   return (
     <Container className="py-5">
       <Row>
-        {/* IMAGE */}
-        <Col md={6} className="mb-4">
-          <div
-            className="border rounded-3 overflow-hidden shadow-sm bg-light d-flex align-items-center justify-content-center"
-            style={{ minHeight: "400px" }}
-          >
-            {product.images?.length > 0 ? (
-              <img
-                src={product.images[0]}
-                alt={product.name}
-                className="img-fluid w-100"
-                style={{ objectFit: "cover", height: "400px" }}
-                onError={(e) => (e.target.style.display = "none")}
-              />
-            ) : (
-              <div className="text-muted small">Sản phẩm chưa có hình ảnh</div>
-            )}
-          </div>
-        </Col>
+      {/* IMAGE */}
+      <Col md={6} className="mb-4">
+        <div
+          className="border rounded-3 overflow-hidden shadow-sm bg-light d-flex align-items-center justify-content-center"
+          style={{ minHeight: "400px" }}
+        >
+          <img
+            src={product.images?.[0] || "/no-image.png"}
+            alt={product.name}
+            className="img-fluid w-100"
+            style={{ objectFit: "cover", height: "400px" }}
+            onError={(e) => {
+              e.target.onerror = null; // tránh loop
+              e.target.src = "/no-image.png";
+            }}
+          />
+        </div>
+      </Col>
 
         {/* INFO */}
         <Col md={6}>

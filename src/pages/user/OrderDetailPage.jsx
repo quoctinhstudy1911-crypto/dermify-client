@@ -9,25 +9,32 @@ const OrderDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const fetchOrderDetail = async () => {
-      try {
-        setLoading(true);
-        // orderApi đã bóc tách data qua axiosClient interceptor
-        const response = await orderApi.customer.getOrderDetail(orderId);
-        setOrder(response);
-      } catch (err) {
-        // Lấy message từ backend thông qua reject của axiosClient
-        const errorMessage = err.message || "Không thể lấy thông tin đơn hàng";
-        setError(errorMessage);
-        alert(errorMessage);
-      } finally {
-        setLoading(false);
-      }
-    };
 
-    if (orderId) fetchOrderDetail();
-  }, [orderId]);
+useEffect(() => {
+  const fetchOrderDetail = async () => {
+    try {
+      setLoading(true);
+
+      const response = await orderApi.customer.getOrderDetail(orderId);
+      console.log("orderId:", orderId);
+
+      console.log("ORDER RESPONSE:", response);
+
+      setOrder(response);
+
+    } catch (err) {
+      const errorMessage = err.message || "Không thể lấy thông tin đơn hàng";
+      setError(errorMessage);
+      alert(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (orderId) {
+    fetchOrderDetail();
+  }
+}, [orderId]);
 
   // Helper để hiển thị màu sắc Badge cho trạng thái
   const getStatusVariant = (status) => {
@@ -59,10 +66,10 @@ const OrderDetailPage = () => {
     );
   }
 
-  if (!order) {
+  if (!order || !Array.isArray(order.items)) {
     return (
       <Container className="mt-5 text-center">
-        <Alert variant="info">Không tìm thấy dữ liệu đơn hàng.</Alert>
+        <Alert variant="info">Dữ liệu đơn hàng không hợp lệ.</Alert>
       </Container>
     );
   }
@@ -165,7 +172,7 @@ const OrderDetailPage = () => {
                 <span className="text-muted">Quận/Huyện:</span> {order.shippingAddress?.district}
               </p>
               <p className="mb-0 small">
-                <span className="text-muted">Thành phố:</span> {order.shippingAddress?.city}
+                <span className="text-muted">Thành phố:</span> {order.shippingAddress?.province}
               </p>
             </Card.Body>
           </Card>

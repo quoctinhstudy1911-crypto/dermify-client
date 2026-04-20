@@ -223,9 +223,17 @@ function MyOrdersPage() {
                           <Button
                             size="sm"
                             variant="primary"
-                            onClick={() =>
-                              navigate(`/orders/${order._id || order.id}`)
+                            onClick={() => {
+                            const id = order.id || order._id;
+
+                            if (!id) {
+                              console.log("ORDER LỖI:", order);
+                              alert("Không có ID đơn hàng!");
+                              return;
                             }
+
+                            navigate(`/orders/${id}`);
+                          }}
                           >
                             Xem chi tiết
                           </Button>

@@ -113,10 +113,10 @@ const ProductReview = ({ productId }) => {
     if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
   };
 
-  const hasReviewed = reviews.some(
+  const hasReviewed = user && reviews.some(
     (r) => String(getSafeId(r.userId)) === String(getSafeId(user)),
   );
-
+  
   return (
     <div className="mt-5 border-top pt-4">
       <h4 className="fw-bold mb-4 text-uppercase">Đánh giá từ khách hàng</h4>

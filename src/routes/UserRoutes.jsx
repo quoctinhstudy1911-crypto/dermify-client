@@ -71,7 +71,7 @@ export default function UserRoutes() {
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/order-success" element={<OrderSuccess />} />
           <Route path="/orders" element={<MyOrdersPage />} />
-          <Route path="/orders/:id" element={<OrderDetailPage />} />
+          <Route path="/orders/:orderId" element={<OrderDetailPage />} />
         </Route>
       </Route>
     </>
