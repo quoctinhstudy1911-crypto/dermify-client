@@ -20,7 +20,6 @@
   z-index: 1000;
 }
 
-/* Logo Section */
 .navbar-logo {
   display: flex;
   align-items: center;
@@ -64,7 +63,6 @@
   width: fit-content;
 }
 
-/* Profile Trigger */
 .user-profile-trigger {
   display: flex;
   align-items: center;
@@ -73,6 +71,8 @@
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.2s ease;
+  border: none;
+  background: transparent;
 }
 
 .user-profile-trigger:hover, .user-profile-trigger.active {
@@ -117,11 +117,14 @@
   font-size: 0.95rem;
   font-weight: 600;
   color: var(--text-main);
+  text-align: left;
 }
 
 .u-role {
   font-size: 0.75rem;
   color: var(--text-muted);
+  text-align: left;
+  text-transform: capitalize;
 }
 
 .arrow-icon {
@@ -133,7 +136,6 @@
   transform: rotate(180deg);
 }
 
-/* Dropdown Box */
 .dropdown-box {
   position: absolute;
   top: calc(var(--nav-height) - 5px);
@@ -185,10 +187,6 @@
   background-color: #f3f4f6;
 }
 
-.menu-icon {
-  font-size: 1.1rem;
-}
-
 .logout-red {
   color: #ef4444;
 }
@@ -209,7 +207,16 @@
   z-index: 1005;
 }
 
-/* Animations */
+.login-btn {
+  padding: 8px 20px;
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 .animate-fade-in {
   animation: fadeIn 0.2s ease-out;
 }
@@ -219,7 +226,6 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Mobile Responsiveness */
 @media (max-width: 768px) {
   .admin-navbar { padding: 0 1rem; }
   .brand-name { font-size: 1rem; }

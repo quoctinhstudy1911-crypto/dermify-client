@@ -29,7 +29,7 @@ function ForgotPassword() {
           type: "success", 
           text: "Nếu email tồn tại, chúng tôi đã gửi hướng dẫn đặt lại mật khẩu." 
         });
-    } catch (err) {
+    } catch {
        setMessage({ 
           type: "danger", 
           text: "Không thể gửi yêu cầu lúc này. Vui lòng thử lại." 

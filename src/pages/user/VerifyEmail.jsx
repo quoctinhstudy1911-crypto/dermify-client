@@ -30,7 +30,7 @@ function VerifyEmail() {
           navigate("/dangnhap");
         }, 3000);
 
-      } catch (err) {
+      } catch {
         setStatus("error");
       }
     };
