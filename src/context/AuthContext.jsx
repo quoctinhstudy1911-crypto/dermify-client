@@ -115,7 +115,7 @@ useEffect(() => {
 const logout = async () => {
   try {
     await authApi.logout(); // gọi backend
-  } catch (err) {
+  } catch {
     // có thể fail nhưng vẫn logout local
   }
 

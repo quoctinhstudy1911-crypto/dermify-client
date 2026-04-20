@@ -3,10 +3,12 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Container, Row, Col, Card, Table, Badge, Button, Spinner, ListGroup } from "react-bootstrap";
 import { ChevronLeft, Printer, User, MapPin, CreditCard, Package, Clock, CheckCircle, Truck, XCircle } from "lucide-react";
 import orderApi from "@/api/orderApi";
+import { useAdminAuth } from "../../context/AdminAuthContext"; // Import context để lấy role
 
 export default function ChiTietDonHang() {
   const { orderId } = useParams();
   const navigate = useNavigate();
+  const { role } = useAdminAuth(); // Lấy role hiện tại
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -30,7 +32,6 @@ export default function ChiTietDonHang() {
   const customer = order?.customerId || {};
   const shipping = order?.shippingAddress || {};
 
-  // Nếu shippingAddress là object, dùng trực tiếp; nếu string, fallback
   const shippingInfo = typeof shipping === "object" && shipping.fullName
     ? shipping
     : {
@@ -164,11 +165,12 @@ export default function ChiTietDonHang() {
               </Card.Footer>
             </Card>
 
-            {/* KHỐI THAO TÁC XỬ LÝ */}
+            {/* KHỐI THAO TÁC XỬ LÝ (PHÂN QUYỀN TẠI ĐÂY) */}
             <Card className="border-0 shadow-sm border-start border-4 border-primary">
               <Card.Body>
                 <h5 className="fw-bold mb-3">Thao tác xử lý nhanh</h5>
                 <div className="d-flex gap-2 flex-wrap">
+                  {/* Quyền chung cho cả Staff và Admin */}
                   {order.orderStatus === "pending" && (
                     <Button variant="info" className="text-white px-4" onClick={() => handleUpdateStatus("confirmed")}>Xác nhận đơn hàng</Button>
                   )}
@@ -179,14 +181,26 @@ export default function ChiTietDonHang() {
                     <Button variant="success" className="px-4" onClick={() => handleUpdateStatus("delivered")}>Xác nhận giao thành công</Button>
                   )}
                   
-                  {order.paymentStatus === "pending" && order.orderStatus !== "cancelled" && (
+                  {/* Chỉ Admin/Super Admin được xác nhận thanh toán thủ công */}
+                  {order.paymentStatus === "pending" && 
+                   order.orderStatus !== "cancelled" && 
+                   (role === "admin" || role === "super_admin") && (
                     <Button variant="outline-success" onClick={handleUpdatePayment}>💰 Xác nhận đã thanh toán</Button>
                   )}
 
-                  {order.orderStatus !== "delivered" && order.orderStatus !== "cancelled" && (
+                  {/* Chỉ Admin/Super Admin được quyền Hủy đơn */}
+                  {order.orderStatus !== "delivered" && 
+                   order.orderStatus !== "cancelled" && 
+                   (role === "admin" || role === "super_admin") && (
                     <Button variant="outline-danger" onClick={() => handleUpdateStatus("cancelled")}>Hủy đơn</Button>
                   )}
                 </div>
+                {/* Thông báo cho Staff nếu không có quyền hủy/thanh toán */}
+                {role === "staff" && order.orderStatus !== "cancelled" && order.orderStatus !== "delivered" && (
+                   <div className="mt-2 text-muted small">
+                     <i>* Lưu ý: Liên hệ Admin để thực hiện Hủy đơn hoặc Xác nhận thanh toán tiền mặt.</i>
+                   </div>
+                )}
               </Card.Body>
             </Card>
           </Col>
@@ -221,7 +235,7 @@ export default function ChiTietDonHang() {
               <ListGroup variant="flush">
                 <ListGroup.Item className="d-flex justify-content-between align-items-center py-3">
                   Vận chuyển:
-                  <Badge bg={order.orderStatus === 'delivered' ? 'success' : 'primary'}>{order.orderStatus.toUpperCase()}</Badge>
+                  {renderStatusBadge(order.orderStatus)}
                 </ListGroup.Item>
                 <ListGroup.Item className="d-flex justify-content-between align-items-center py-3">
                   Thanh toán:

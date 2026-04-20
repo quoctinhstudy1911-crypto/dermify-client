@@ -26,10 +26,11 @@ export default function DangNhap() {
       setLoading(true);
       setError("");
 
-      // 1. Dọn dẹp sạch sẽ token cũ
-      localStorage.clear(); // Hoặc xóa từng cái như cũ của bạn
+      localStorage.removeItem("admin_accessToken");
+      localStorage.removeItem("admin_refreshToken");
+      localStorage.removeItem("admin_role");
+      localStorage.removeItem("admin_info");
 
-      // 2. Gọi API Login
       const res = await authApi.login({
         email: formData.email.trim().toLowerCase(),
         password: formData.password,
@@ -37,26 +38,34 @@ export default function DangNhap() {
 
       const { accessToken, refreshToken, role } = res;
 
-      // 3. Kiểm tra quyền Admin
-      if (!["admin", "super_admin"].includes(role)) {
+      if (!["staff", "admin", "super_admin"].includes(role)) {
         setError("Tài khoản không có quyền truy cập quản trị.");
         setLoading(false);
         return;
       }
 
-      // 4. LƯU TOKEN TRƯỚC (Thao tác này là đồng bộ)
       localStorage.setItem("admin_accessToken", accessToken);
       localStorage.setItem("admin_refreshToken", refreshToken);
       localStorage.setItem("admin_role", role);
 
-      // 5. GỌI API GET ME NGAY LẬP TỨC
-      // Việc này sẽ giúp xác thực token ngay lập tức và lấy thông tin nhân viên để lưu vào context
       try {
-        const staffInfo = await staffApi.getMe();
+        let staffInfo;
+        // CHỈNH SỬA: Truyền trực tiếp headers để chắc chắn API nhận được Token vừa lưu
+        const config = {
+          headers: { Authorization: `Bearer ${accessToken}` }
+        };
+
+        if (role === "super_admin") {
+          try {
+            staffInfo = await staffApi.getMe(config); // Thêm config
+          } catch {
+            staffInfo = await authApi.getMe(config); // Thêm config
+          }
+        } else {
+          staffInfo = await staffApi.getMe(config); // Thêm config
+        }
         
         loginAdmin(staffInfo, role);
-        
-        console.log("Đăng nhập Admin thành công!");
         navigate("/admin", { replace: true });
 
       } catch (err) {
@@ -64,7 +73,8 @@ export default function DangNhap() {
         localStorage.removeItem("admin_accessToken");
         localStorage.removeItem("admin_refreshToken");
         localStorage.removeItem("admin_role");
-        setError("Không thể lấy thông tin nhân viên. Vui lòng thử lại.");
+        localStorage.removeItem("admin_info");
+        setError(err?.message || "Không thể lấy thông tin nhân viên. Vui lòng thử lại.");
       }
     } catch (err) {
       setError(err?.message || "Email hoặc mật khẩu không đúng.");

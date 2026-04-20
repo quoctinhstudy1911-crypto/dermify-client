@@ -24,10 +24,15 @@ const axiosClient = axios.create({
 // ======================
 axiosClient.interceptors.request.use(
   (config) => {
-    const isAdminPage = window.location.pathname.startsWith("/admin");
-    const token = isAdminPage 
-      ? localStorage.getItem("admin_accessToken") 
-      : localStorage.getItem("accessToken");
+    // Ưu tiên lấy adminToken nếu gọi API staff hoặc đang ở các route quản trị
+    const adminToken = localStorage.getItem("admin_accessToken");
+    const userToken = localStorage.getItem("accessToken");
+    
+    const isAdminPath = window.location.pathname.startsWith("/admin");
+    const isStaffApi = config.url.includes("/staff");
+
+    // Logic: Nếu gọi API liên quan nhân viên hoặc đang ở trang admin thì dùng adminToken
+    const token = (isAdminPath || isStaffApi) ? adminToken : userToken;
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -42,9 +47,14 @@ axiosClient.interceptors.request.use(
 // ======================
 axiosClient.interceptors.response.use(
   (response) => {
-    // LỚP 1 & 2: Bóc tách theo logic gốc của bạn
+    // Bóc tách dữ liệu theo chuẩn backend (data.data hoặc data)
     const res = response.data; 
     if (res && res.data !== undefined) {
+      // BẢO TOÀN PAGINATION: Nếu Backend để pagination ở ngoài cùng, 
+      // ta ghim thẳng nó vào data để Frontend gọi dễ dàng (vd: response.pagination)
+      if (res.pagination) {
+        res.data.pagination = res.pagination;
+      }
       return res.data; 
     }
     return res;
@@ -55,28 +65,27 @@ axiosClient.interceptors.response.use(
     const originalRequest = error.config;
 
     const isAdminPage = currentPath.startsWith("/admin");
+    // Kiểm tra xem có đang ở trang login không để tránh loop refresh token
     const isLoginPage = currentPath.includes("/login") || currentPath.includes("/dangnhap");
 
-    // Kiểm tra token hiện tại để xác định có cần refresh hay không
+    // Xác định đang dùng loại token nào để refresh cho đúng
     const hasToken = isAdminPage 
       ? localStorage.getItem("admin_accessToken") 
       : localStorage.getItem("accessToken");
 
-    // CHỈ XỬ LÝ REFRESH TOKEN KHI: Lỗi 401, không phải trang login, và đang có token cũ
+    // XỬ LÝ REFRESH TOKEN (Khi gặp lỗi 401)
     if (status === 401 && hasToken && !isLoginPage && !originalRequest._retry) {
       
       const refreshToken = isAdminPage
         ? localStorage.getItem("admin_refreshToken")
         : localStorage.getItem("refreshToken");
 
-      // Nếu không có refresh token để "cứu" -> Logout luôn
       if (!refreshToken) {
         window.location.href = isAdminPage ? "/admin/login" : "/dangnhap";
         return Promise.reject(error);
       }
 
       if (isRefreshing) {
-        // Nếu đang có 1 request refresh đang chạy, đẩy các request sau vào hàng chờ
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         })
@@ -87,42 +96,36 @@ axiosClient.interceptors.response.use(
           .catch((err) => Promise.reject(err));
       }
 
-      // Đánh dấu đã thử lại để tránh loop vô tận
       originalRequest._retry = true;
       isRefreshing = true;
 
       try {
-        // Gọi API lấy token mới (Sử dụng axios gốc để tránh interceptor này)
-        const res = await axios.post(`${import.meta.env.VITE_API_URL}/auth/refresh`, { 
+        // Gọi API lấy token mới bằng axios gốc
+        const res = await axios.post(`${import.meta.env.VITE_API_URL}/auth/refresh-token`, { 
           refreshToken 
         });
         
-        // Giả định backend trả về token trong res.data.data.accessToken
         const newToken = res.data?.data?.accessToken || res.data?.accessToken;
 
-        // Lưu token mới vào đúng vị trí
         if (isAdminPage) {
           localStorage.setItem("admin_accessToken", newToken);
         } else {
           localStorage.setItem("accessToken", newToken);
         }
 
-        // Thực thi các request đang đợi trong queue
         processQueue(null, newToken);
-
-        // Chạy lại request bị lỗi vừa rồi với token mới
         originalRequest.headers.Authorization = "Bearer " + newToken;
         return axiosClient(originalRequest);
 
       } catch (err) {
-        // Nếu Refresh thất bại (Refresh Token hết hạn)
         processQueue(err, null);
         
-        // Xóa sạch bộ nhớ theo phân quyền
+        // Clear storage nếu refresh token cũng tèo
         if (isAdminPage) {
           localStorage.removeItem("admin_accessToken");
           localStorage.removeItem("admin_refreshToken");
           localStorage.removeItem("admin_role");
+          localStorage.removeItem("admin_info");
         } else {
           localStorage.removeItem("accessToken");
           localStorage.removeItem("refreshToken");
@@ -138,10 +141,11 @@ axiosClient.interceptors.response.use(
       }
     }
 
-    // Các lỗi khác không phải 401 hoặc lỗi nghiêm trọng
+    // Các lỗi khác trả về message từ backend hoặc mặc định
     return Promise.reject({
       message: error.response?.data?.message || "Có lỗi xảy ra",
       status,
+      data: error.response?.data // Giữ lại data để check lỗi chi tiết (như lỗi 400 email tồn tại)
     });
   }
 );

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Table, Button, Spinner, Badge, Form, Card, Row, Col, InputGroup } from "react-bootstrap";
-import { Filter, ChevronLeft, ChevronRight, CheckCircle, Truck, XCircle, Clock, CreditCard, RefreshCcw, Eye } from "lucide-react"; 
+import { Filter, ChevronLeft, ChevronRight, CheckCircle, Truck, XCircle, Clock, RefreshCcw, Eye } from "lucide-react"; 
 import orderApi from "@/api/orderApi";
 
 export default function DonHang() {
@@ -14,7 +14,6 @@ export default function DonHang() {
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      // Gọi đúng hàm getAllOrders từ phần admin trong api của bạn
       const res = await orderApi.admin.getAllOrders({ page, status: statusFilter });
       setOrders(res.orders || []);
     } catch (err) {
@@ -67,6 +66,7 @@ export default function DonHang() {
                   </InputGroup.Text>
                   <Form.Select 
                     className="border-start-0 ps-0 shadow-none" 
+                    value={statusFilter}
                     onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
                   >
                     <option value="">Tất cả trạng thái</option>
@@ -78,9 +78,6 @@ export default function DonHang() {
                   </Form.Select>
                 </InputGroup>
               </Col>
-              <Col className="text-end">
-                <span className="text-muted small">Tổng đơn hiện tại: <b className="text-dark">{orders.length}</b></span>
-              </Col>
             </Row>
           </Card.Body>
         </Card>
@@ -91,7 +88,7 @@ export default function DonHang() {
               <div className="text-center py-5">
                 <Spinner animation="border" variant="primary" />
               </div>
-            ) : (
+            ) : orders.length > 0 ? (
               <div className="table-responsive">
                 <Table hover className="align-middle mb-0">
                   <thead className="bg-light border-bottom">
@@ -105,32 +102,58 @@ export default function DonHang() {
                   </thead>
                   <tbody>
                     {orders.map((o) => {
-                    const orderId = o.id || o._id;
-                    return (
-                      <tr key={orderId || o.orderCode}>
-                        <td className="ps-4 fw-bold">#{o.orderCode}</td>
-                        <td>{o.customerId?.fullName || "Khách lẻ"}</td>
-                        <td className="fw-bold">{o.totalPrice?.toLocaleString()}₫</td>
-                        <td className="text-center">{renderStatus(o.orderStatus)}</td>
-                        <td className="text-center">
-                          <Button 
-                            variant="outline-primary" 
-                            size="sm" 
-                            className="px-3"
-                            onClick={() => orderId && navigate(`/admin/orders/${orderId}`)}
-                            disabled={!orderId}
-                          >
-                            <Eye size={14} className="me-1" /> Xem
-                          </Button>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                      const orderId = o.id || o._id;
+                      return (
+                        <tr key={orderId || o.orderCode}>
+                          <td className="ps-4 fw-bold">#{o.orderCode}</td>
+                          <td>{o.customerId?.fullName || o.shippingName || "Khách lẻ"}</td>
+                          <td className="fw-bold">{o.totalPrice?.toLocaleString()}₫</td>
+                          <td className="text-center">{renderStatus(o.orderStatus)}</td>
+                          <td className="text-center">
+                            <Button 
+                              variant="outline-primary" 
+                              size="sm" 
+                              className="px-3"
+                              onClick={() => orderId && navigate(`/admin/orders/${orderId}`)}
+                              disabled={!orderId}
+                            >
+                              <Eye size={14} className="me-1" /> Xem
+                            </Button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </Table>
               </div>
+            ) : (
+              <div className="text-center py-5 text-muted">Không có đơn hàng nào được tìm thấy.</div>
             )}
           </Card.Body>
+          {/* PHẦN PHÂN TRANG ĐƠN GIẢN */}
+          <Card.Footer className="bg-white border-0 py-3">
+            <div className="d-flex justify-content-between align-items-center px-3">
+              <span className="text-muted small">Trang {page}</span>
+              <div className="d-flex gap-2">
+                <Button 
+                  variant="outline-secondary" 
+                  size="sm" 
+                  disabled={page === 1 || loading}
+                  onClick={() => setPage(p => p - 1)}
+                >
+                  <ChevronLeft size={16} /> Trước
+                </Button>
+                <Button 
+                  variant="outline-secondary" 
+                  size="sm" 
+                  disabled={orders.length < 10 || loading} // Giả định mỗi trang 10 item
+                  onClick={() => setPage(p => p + 1)}
+                >
+                  Tiếp <ChevronRight size={16} />
+                </Button>
+              </div>
+            </div>
+          </Card.Footer>
         </Card>
       </div>
     </div>

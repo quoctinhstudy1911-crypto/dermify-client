@@ -40,7 +40,7 @@ const userApi = {
 };
 
 const adminUserApi = {
-  getAllUsers: () => axiosClient.get("/users"),
+  getAllUsers: (params) => axiosClient.get("/users", { params }),
   createUser: (data) => axiosClient.post("/users", data),
   updateUserStatus: (id, data) => axiosClient.put(`/users/${id}`, data),
   deleteUser: (id) => axiosClient.delete(`/users/${id}`),

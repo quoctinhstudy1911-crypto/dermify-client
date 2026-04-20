@@ -4,7 +4,7 @@ import { Spinner, Card, Row, Col, ProgressBar, Badge } from "react-bootstrap";
 import orderApi from "@/api/orderApi";
 
 export default function AdminDashboard() {
-  const { admin, loading } = useAdminAuth();
+  const { admin, role, loading } = useAdminAuth(); // Lấy thêm role từ context
   const [stats, setStats] = useState(null);
   const [loadingStats, setLoadingStats] = useState(true);
 
@@ -43,11 +43,40 @@ export default function AdminDashboard() {
 
   const overview = stats?.overview || {};
 
+  // Cấu hình các thẻ thống kê
   const statCards = [
-    { label: "Tổng đơn hàng", value: overview.totalOrders || 0, icon: "bi-cart-check", color: "#10b981", bg: "#ecfdf5" },
-    { label: "Doanh thu", value: (overview.totalRevenue || 0).toLocaleString() + "đ", icon: "bi-currency-dollar", color: "#ef4444", bg: "#fef2f2" },
-    { label: "Khách hàng", value: overview.totalCustomers || 0, icon: "bi-people", color: "#f59e0b", bg: "#fffbeb" },
-    { label: "Giá trị TB", value: (overview.averageOrderValue || 0).toLocaleString() + "đ", icon: "bi-graph-up-arrow", color: "#3b82f6", bg: "#eff6ff" },
+    { 
+      label: "Tổng đơn hàng", 
+      value: overview.totalOrders || 0, 
+      icon: "bi-cart-check", 
+      color: "#10b981", 
+      bg: "#ecfdf5",
+      isPrivate: false // Staff có thể xem
+    },
+    { 
+      label: "Doanh thu", 
+      value: (overview.totalRevenue || 0).toLocaleString() + "đ", 
+      icon: "bi-currency-dollar", 
+      color: "#ef4444", 
+      bg: "#fef2f2",
+      isPrivate: true // Chỉ Admin/Super Admin xem
+    },
+    { 
+      label: "Khách hàng", 
+      value: overview.totalCustomers || 0, 
+      icon: "bi-people", 
+      color: "#f59e0b", 
+      bg: "#fffbeb",
+      isPrivate: true // Chỉ Admin/Super Admin xem
+    },
+    { 
+      label: "Giá trị TB", 
+      value: (overview.averageOrderValue || 0).toLocaleString() + "đ", 
+      icon: "bi-graph-up-arrow", 
+      color: "#3b82f6", 
+      bg: "#eff6ff",
+      isPrivate: true // Chỉ Admin/Super Admin xem
+    },
   ];
 
   return (
@@ -65,25 +94,33 @@ export default function AdminDashboard() {
 
       {/* STATS CARDS */}
       <Row className="g-4 mb-4">
-        {statCards.map((stat, idx) => (
-          <Col md={6} lg={3} key={idx}>
-            <Card className="h-100 border-0 shadow-sm transition-hover" style={{ borderRadius: "15px" }}>
-              <Card.Body className="p-4">
-                <div className="d-flex align-items-center mb-3">
-                  <div 
-                    className="rounded-circle d-flex align-items-center justify-content-center" 
-                    style={{ width: "48px", height: "48px", backgroundColor: stat.bg, color: stat.color, fontSize: "1.2rem" }}
-                  >
-                    {/* Sử dụng Icon từ Bootstrap Icons hoặc giữ nguyên Emoji của bạn */}
-                    <span role="img" aria-label={stat.label}>{stat.icon.startsWith('bi-') ? <i className={`bi ${stat.icon}`}></i> : stat.icon}</span>
+        {statCards.map((stat, idx) => {
+          // Logic ẩn số liệu: Nếu là staff và mục đó là private thì hiện "******"
+          const showValue = !stat.isPrivate || role === "admin" || role === "super_admin";
+
+          return (
+            <Col md={6} lg={3} key={idx}>
+              <Card className="h-100 border-0 shadow-sm transition-hover" style={{ borderRadius: "15px" }}>
+                <Card.Body className="p-4">
+                  <div className="d-flex align-items-center mb-3">
+                    <div 
+                      className="rounded-circle d-flex align-items-center justify-content-center" 
+                      style={{ width: "48px", height: "48px", backgroundColor: stat.bg, color: stat.color, fontSize: "1.2rem" }}
+                    >
+                      <span role="img" aria-label={stat.label}>
+                        {stat.icon.startsWith('bi-') ? <i className={`bi ${stat.icon}`}></i> : stat.icon}
+                      </span>
+                    </div>
                   </div>
-                </div>
-                <div className="text-muted small fw-medium uppercase mb-1">{stat.label}</div>
-                <h3 className="fw-bold mb-0" style={{ color: "#1e293b" }}>{stat.value}</h3>
-              </Card.Body>
-            </Card>
-          </Col>
-        ))}
+                  <div className="text-muted small fw-medium uppercase mb-1">{stat.label}</div>
+                  <h3 className="fw-bold mb-0" style={{ color: "#1e293b" }}>
+                    {showValue ? stat.value : "******"}
+                  </h3>
+                </Card.Body>
+              </Card>
+            </Col>
+          );
+        })}
       </Row>
 
       <Row className="g-4">
@@ -153,7 +190,6 @@ export default function AdminDashboard() {
         </Col>
       </Row>
 
-      {/* Thêm chút CSS nhẹ nhàng */}
       <style>{`
         .transition-hover {
           transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;

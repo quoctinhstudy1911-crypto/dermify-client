@@ -4,7 +4,7 @@ const categoryApi = {
   
   // LẤY CÂY DANH MỤC
   getCategoryTree: () => {
-    return axiosClient.get("/categories");
+    return axiosClient.get("/categories/tree");
   },
 
   // LẤY DANH MỤC THEO SLUG (DÙNG CHO TRANG DANH MỤC SẢN PHẨM)

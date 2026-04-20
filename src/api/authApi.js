@@ -15,7 +15,7 @@ const authApi = {
   verifyEmail: (token) =>
     axiosClient.get(`/auth/verify-email?token=${token}`),
 
-  // QUÊN MẬT KHẨU
+  // QUÊN MẬT KHẨU  
   forgotPassword: (email) =>
     axiosClient.post("/auth/forgot-password", { email }),
 
@@ -25,5 +25,6 @@ const authApi = {
   refreshToken: (refreshToken) =>
     axiosClient.post("/auth/refresh-token", { refreshToken }),
 };
+ 
 
 export default authApi;

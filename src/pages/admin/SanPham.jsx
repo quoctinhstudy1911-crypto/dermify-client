@@ -5,12 +5,15 @@ import {
   ChevronLeft, ChevronRight, Image as ImageIcon 
 } from "lucide-react";
 import { productApi, uploadApi } from "@/api";
+import { useAdminAuth } from "@/context/AdminAuthContext"; // Import context để check quyền
 
 const INITIAL_FORM = { name: "", price: "", stock: "", description: "", images: [] };
-const ITEMS_PER_PAGE = 8; // Khớp với limit mặc định của Backend Service
+const ITEMS_PER_PAGE = 8;
 
 export default function SanPham() {
-  // --- STATES ---
+  const { role } = useAdminAuth(); // Lấy role hiện tại
+  const isManager = role === "admin" || role === "super_admin"; // Kiểm tra quyền quản lý
+
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -19,27 +22,19 @@ export default function SanPham() {
   const [imageFile, setImageFile] = useState(null);
   const [previewImage, setPreviewImage] = useState("");
 
-  // --- PAGINATION STATES (Đồng bộ với pagination object từ Backend) ---
   const [currentPage, setCurrentPage] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
 
-  // --- FORMATTER ---
   const formatPrice = (p) => new Intl.NumberFormat("vi-VN").format(p || 0) + " ₫";
 
-  // --- FETCH DATA (Dựa trên productList service trả về {products, pagination}) ---
   const fetchData = useCallback(async (page = 1) => {
     setLoading(true);
     try {
-      // Gửi params: page và limit (Backend Service sẽ tự tính skip)
       const res = await productApi.getProducts({ 
         page: page, 
         limit: ITEMS_PER_PAGE 
       });
-
-      /* LƯU Ý: axiosClient đã bóc lớp 'data'. 
-         Theo Backend của bạn: res lúc này là { products, pagination: { totalProducts, totalPages, ... } }
-      */
       const productList = res?.products || [];
       const pagination = res?.pagination || {};
 
@@ -58,7 +53,6 @@ export default function SanPham() {
     fetchData(1);
   }, [fetchData]);
 
-  // --- HANDLERS ---
   const handleShowModal = (product = null) => {
     if (product) {
       setEditing(product);
@@ -84,8 +78,6 @@ export default function SanPham() {
     setLoading(true);
     try {
       let finalImages = form.images;
-
-      // 1. Xử lý Upload ảnh nếu Admin chọn file mới
       if (imageFile) {
         const uploadRes = await uploadApi.uploadImages(imageFile);
         if (Array.isArray(uploadRes) && uploadRes.length > 0) {
@@ -93,7 +85,6 @@ export default function SanPham() {
         }
       }
 
-      // 2. Chuẩn bị payload (Khớp với createProduct/updateProductById service)
       const payload = {
         ...form,
         price: Number(form.price),
@@ -102,7 +93,6 @@ export default function SanPham() {
       };
 
       if (editing) {
-        // Cập nhật theo ID (Middleware trong service sẽ lo việc update slug)
         await productApi.updateProduct(editing._id || editing.id, payload);
       } else {
         await productApi.createProduct(payload);
@@ -110,7 +100,7 @@ export default function SanPham() {
 
       setShowModal(false);
       fetchData(currentPage);
-      alert("Đã lưu thay đổi vào kho hàng!");
+      alert("Đã lưu thay đổi!");
     } catch (error) {
       alert(error.message || "Có lỗi xảy ra");
     } finally {
@@ -119,11 +109,11 @@ export default function SanPham() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Bạn muốn xóa sản phẩm này? (Xóa mềm)")) return;
+    if (!window.confirm("Bạn muốn xóa sản phẩm này?")) return;
     try {
       await productApi.deleteProduct(id);
       fetchData(currentPage);
-    } catch (error) {
+    } catch {
       alert("Lỗi khi xóa sản phẩm");
     }
   };
@@ -132,24 +122,25 @@ export default function SanPham() {
     <div className="p-4 bg-light min-vh-100">
       <Card className="border-0 shadow-sm" style={{ borderRadius: "15px" }}>
         <Card.Body className="p-4">
-          {/* Header */}
           <div className="d-flex justify-content-between align-items-center mb-4">
             <div>
               <h3 className="fw-bold text-dark mb-1">📦 Kho Sản Phẩm</h3>
               <p className="text-muted small mb-0">
-                Hiển thị <strong>{products.length}</strong> trên tổng số <strong>{totalItems}</strong> sản phẩm
+                Hiển thị <strong>{products.length}</strong> trên <strong>{totalItems}</strong> sản phẩm
               </p>
             </div>
-            <Button 
-              className="d-flex align-items-center gap-2 px-4 py-2 fw-bold border-0"
-              style={{ backgroundColor: "#4318FF", borderRadius: "10px" }}
-              onClick={() => handleShowModal()}
-            >
-              <Plus size={18} /> Thêm mới
-            </Button>
+            {/* Chỉ hiện nút Thêm mới nếu có quyền Manager */}
+            {isManager && (
+              <Button 
+                className="d-flex align-items-center gap-2 px-4 py-2 fw-bold border-0"
+                style={{ backgroundColor: "#4318FF", borderRadius: "10px" }}
+                onClick={() => handleShowModal()}
+              >
+                <Plus size={18} /> Thêm mới
+              </Button>
+            )}
           </div>
 
-          {/* Table */}
           <div className="table-responsive">
             <Table hover className="align-middle mb-0" style={{ borderCollapse: "separate", borderSpacing: "0 10px" }}>
               <thead>
@@ -158,7 +149,7 @@ export default function SanPham() {
                   <th className="border-0">Sản phẩm</th>
                   <th className="border-0">Giá niêm yết</th>
                   <th className="border-0 text-center">Tồn kho</th>
-                  <th className="border-0 text-end pe-4">Hành động</th>
+                  {isManager && <th className="border-0 text-end pe-4">Hành động</th>}
                 </tr>
               </thead>
               <tbody>
@@ -194,21 +185,24 @@ export default function SanPham() {
                         {p.stock} đơn vị
                       </Badge>
                     </td>
-                    <td className="text-end pe-4" style={{ borderRadius: "0 10px 10px 0" }}>
-                      <Button variant="link" className="text-primary p-0 me-3 shadow-none" onClick={() => handleShowModal(p)}>
-                        <Edit3 size={18} />
-                      </Button>
-                      <Button variant="link" className="text-danger p-0 shadow-none" onClick={() => handleDelete(p._id || p.id)}>
-                        <Trash2 size={18} />
-                      </Button>
-                    </td>
+                    {/* Chỉ hiện các nút hành động Edit/Delete nếu là Manager */}
+                    {isManager && (
+                      <td className="text-end pe-4" style={{ borderRadius: "0 10px 10px 0" }}>
+                        <Button variant="link" className="text-primary p-0 me-3 shadow-none" onClick={() => handleShowModal(p)}>
+                          <Edit3 size={18} />
+                        </Button>
+                        <Button variant="link" className="text-danger p-0 shadow-none" onClick={() => handleDelete(p._id || p.id)}>
+                          <Trash2 size={18} />
+                        </Button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
             </Table>
           </div>
 
-          {/* Pagination */}
+          {/* Pagination logic ... giữ nguyên */}
           {totalPages > 1 && (
             <div className="d-flex justify-content-center align-items-center gap-3 mt-4">
               <Button 
@@ -229,14 +223,15 @@ export default function SanPham() {
         </Card.Body>
       </Card>
 
-      {/* Modal Form */}
+      {/* Modal Form ... giữ nguyên phần JSX */}
       <Modal show={showModal} onHide={() => setShowModal(false)} centered size="lg">
         <Form onSubmit={handleSave}>
           <Modal.Header closeButton className="border-0 pt-4 px-4">
             <Modal.Title className="fw-bold">{editing ? "Cập Nhật Sản Phẩm" : "Thêm Sản Phẩm Mới"}</Modal.Title>
           </Modal.Header>
           <Modal.Body className="p-4">
-            <div className="row g-4">
+             {/* ... Nội dung form của bạn ... */}
+             <div className="row g-4">
               <div className="col-md-5">
                 <div className="rounded-4 border d-flex align-items-center justify-content-center bg-light mb-3" style={{ height: "280px" }}>
                   {previewImage ? (
